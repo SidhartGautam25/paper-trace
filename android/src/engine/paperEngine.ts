@@ -160,8 +160,16 @@ export function executeShot(
   } else if (p1AliveCount === 0 && p2AliveCount > 0) {
     winner = 2;
   } else if (p1AliveCount === 0 && p2AliveCount === 0) {
-    // Highly unlikely tie, give win to active player
     winner = activePlayer;
+  } else {
+    // If both players have dots alive, check if the next player has any valid moves left.
+    // If the next player runs out of options, the game ends immediately and we resolve
+    // the winner using the tie-breaker scores.
+    const nextPlayer = activePlayer === 1 ? 2 : 1;
+    const nextPlayerPool = nextPlayer === 1 ? updatedPlayer1Tokens : updatedPlayer2Tokens;
+    if (!hasAnyValidMoves(nextPlayer, updatedDots, nextPlayerPool)) {
+      winner = resolveEndGameWinner(updatedDots);
+    }
   }
 
   // 9. Swap Active Player
@@ -177,4 +185,46 @@ export function executeShot(
     prunedLinesCount,
     killedDots,
   };
+}
+
+export function hasAnyValidMoves(player: 1 | 2, dots: Dot[], tokens: TokenPool): boolean {
+  const aliveDots = dots.filter((d) => d.player === player && d.isAlive);
+  if (aliveDots.length === 0) return false;
+
+  const availableTokens = Object.keys(tokens)
+    .map(Number)
+    .filter((val) => tokens[val] > 0);
+  if (availableTokens.length === 0) return false;
+
+  const directions: Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+  for (const dot of aliveDots) {
+    for (const token of availableTokens) {
+      for (const dir of directions) {
+        const endPos = getDestination(dot.currentPos, dir, token);
+        if (isWithinBounds(endPos)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+export function resolveEndGameWinner(dots: Dot[]): 1 | 2 {
+  const p1Alive = dots.filter((d) => d.player === 1 && d.isAlive);
+  const p2Alive = dots.filter((d) => d.player === 2 && d.isAlive);
+
+  if (p1Alive.length > p2Alive.length) return 1;
+  if (p2Alive.length > p1Alive.length) return 2;
+
+  // Symmetrical base-distance tie-breaker score calculation
+  const maxRow = GRID_CONFIG.ROWS - 1;
+  const p1Score = p1Alive.reduce((sum, d) => sum + (maxRow - d.currentPos.r), 0);
+  const p2Score = p2Alive.reduce((sum, d) => sum + d.currentPos.r, 0);
+
+  if (p1Score > p2Score) return 1;
+  if (p2Score > p1Score) return 2;
+
+  return 1; // Default fallback to Player 1 if everything is perfectly tied
 }

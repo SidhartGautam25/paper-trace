@@ -15,7 +15,7 @@ interface GridCanvasProps {
   selectedDirection: Direction | null;
   onSelectDot: (dotId: string) => void;
   themeColors: any;
-  killEffect: 'collapse' | 'explode' | 'dissolve';
+  killEffect: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer';
   onSelectDirection: (dir: Direction) => void;
   onGestureEnd: () => void;
   onGestureStart?: () => void;
@@ -35,8 +35,8 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   onGestureStart,
 }) => {
   const cellSize = GRID_CONFIG.CELL_SIZE;
-  const offsetX = 24;
-  const offsetY = 24;
+  const offsetX = 20;
+  const offsetY = 20;
 
   const boardWidth = (GRID_CONFIG.COLS - 1) * cellSize + offsetX * 2;
   const boardHeight = (GRID_CONFIG.ROWS - 1) * cellSize + offsetY * 2;
@@ -207,9 +207,9 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
           key={`dot_${r}_${c}`}
           cx={cx}
           cy={cy}
-          r={2}
+          r={3.2}
           fill={themeColors.gridDot}
-          opacity={0.6}
+          opacity={0.45}
         />
       );
     }
@@ -436,11 +436,11 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               key={`tap_${dot.id}`}
               style={{
                 position: 'absolute',
-                left: cx - 22,
-                top: cy - 22,
-                width: 44,
-                height: 44,
-                borderRadius: 22,
+                left: cx - 26,
+                top: cy - 26,
+                width: 52,
+                height: 52,
+                borderRadius: 26,
                 backgroundColor: 'transparent',
               }}
               onPress={() => onSelectDot(dot.id)}

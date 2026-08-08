@@ -98,7 +98,7 @@ export const GAME_THEMES: GameTheme[] = [
 ];
 
 export interface KillEffectOption {
-  id: 'collapse' | 'explode' | 'dissolve';
+  id: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer';
   name: string;
   description: string;
 }
@@ -118,5 +118,15 @@ export const KILL_EFFECTS: KillEffectOption[] = [
     id: 'dissolve',
     name: 'Digital Dissolve',
     description: 'Dot disintegrates into a pixelated ghost outline.',
+  },
+  {
+    id: 'monster',
+    name: 'Monster Chomper',
+    description: 'Dot morphs into a giant monster face that devours the enemy.',
+  },
+  {
+    id: 'hammer',
+    name: 'Mjolnir Hammer Smash',
+    description: 'Dot transforms into a hammer and smashes the enemy dot into pieces.',
   },
 ];

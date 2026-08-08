@@ -7,6 +7,7 @@ interface TokenPickerProps {
   selectedToken: number | null;
   onSelectToken: (value: number) => void;
   themeColors: any;
+  disabled?: boolean;
 }
 
 export const TokenPicker: React.FC<TokenPickerProps> = ({
@@ -14,19 +15,17 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
   selectedToken,
   onSelectToken,
   themeColors,
+  disabled = false,
 }) => {
   const tokenValues = [1, 2, 3, 4, 5];
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, { color: themeColors.textSecondary }]}>
-        Select Distance Token
-      </Text>
       <View style={styles.row}>
         {tokenValues.map((val) => {
           const count = tokens[val] || 0;
           const isSelected = selectedToken === val;
-          const isDisabled = count === 0;
+          const isDisabled = count === 0 || disabled;
 
           return (
             <TouchableOpacity
@@ -83,7 +82,7 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 10,
+    marginVertical: 2,
     width: '100%',
     paddingHorizontal: 16,
   },
@@ -109,10 +108,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
   },
   tokenValue: {
     fontSize: 20,

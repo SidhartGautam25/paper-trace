@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { GameState, Dot, TokenPool, Direction } from '../types/game';
 import { INITIAL_DOTS, INITIAL_TOKEN_POOL } from '../constants/board';
-import { executeShot } from '../engine/paperEngine';
+import { executeShot, hasAnyValidMoves, resolveEndGameWinner } from '../engine/paperEngine';
+import { recordGameOutcome } from '../utils/stats';
 import { getBestMove } from '../engine/aiEngine';
 
 const getDotLabel = (id: string, player: 1 | 2): string => {
@@ -33,6 +34,22 @@ export function usePaperSession(
     setSelectedToken(null);
     setSelectedDirection(null);
   }, [activePlayer]);
+
+  // Player 1 Move Check Trigger
+  useEffect(() => {
+    if (activePlayer === 1 && !winner) {
+      if (!hasAnyValidMoves(1, dots, player1Tokens)) {
+        setWinner(resolveEndGameWinner(dots));
+      }
+    }
+  }, [activePlayer, winner, dots, player1Tokens]);
+
+  // Record stats on game resolution
+  useEffect(() => {
+    if (winner !== null) {
+      recordGameOutcome(winner === 1 ? 'win' : 'loss');
+    }
+  }, [winner]);
 
   // AI Auto-Move Execution Trigger
   useEffect(() => {
@@ -74,7 +91,7 @@ export function usePaperSession(
             setActivePlayer(1);
           }
         } else {
-          setWinner(1);
+          setWinner(resolveEndGameWinner(dots));
         }
         setIsAiThinking(false);
       }, 800);

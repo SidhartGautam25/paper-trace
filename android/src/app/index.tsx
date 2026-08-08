@@ -24,7 +24,7 @@ export default function HomeScreen() {
 
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [selectedThemeId, setSelectedThemeId] = useState<string>('cyber-neon');
-  const [selectedKillEffect, setSelectedKillEffect] = useState<'collapse' | 'explode' | 'dissolve'>('collapse');
+  const [selectedKillEffect, setSelectedKillEffect] = useState<'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer'>('collapse');
 
   const currentTheme = GAME_THEMES.find((t) => t.id === selectedThemeId) || GAME_THEMES[0];
 
@@ -209,6 +209,29 @@ export default function HomeScreen() {
         >
           <Text style={styles.playButtonText}>Play Game</Text>
         </TouchableOpacity>
+
+        {/* Utility Buttons */}
+        <View style={styles.utilityRow}>
+          <TouchableOpacity
+            style={[styles.utilityButton, { borderColor: currentTheme.colors.border }]}
+            onPress={() => router.push('/rules' as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.utilityButtonText, { color: currentTheme.colors.textPrimary }]}>
+              📖 Rules & Guide
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.utilityButton, { borderColor: currentTheme.colors.border }]}
+            onPress={() => router.push('/history' as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.utilityButtonText, { color: currentTheme.colors.textPrimary }]}>
+              📊 Stats & History
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -322,15 +345,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 12,
     elevation: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
   },
   playButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  utilityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    gap: 12,
+  },
+  utilityButton: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  utilityButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

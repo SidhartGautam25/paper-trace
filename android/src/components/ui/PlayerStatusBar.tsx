@@ -1,5 +1,5 @@
-import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { TokenPool } from '../../types/game';
 
 interface PlayerStatusBarProps {
   activePlayer: 1 | 2;
@@ -9,6 +9,8 @@ interface PlayerStatusBarProps {
   onReset: () => void;
   onBack: () => void;
   themeColors: any;
+  player1Tokens: TokenPool;
+  player2Tokens: TokenPool;
 }
 
 export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
@@ -19,6 +21,8 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
   onReset,
   onBack,
   themeColors,
+  player1Tokens,
+  player2Tokens,
 }) => {
   const formatDiff = (diff: string) => {
     return diff.charAt(0).toUpperCase() + diff.slice(1);
@@ -26,24 +30,21 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.cardBackground, borderBottomColor: themeColors.border }]}>
-      {/* Top Row: Back Navigation, Title & Restart */}
+      {/* Top Row: Back Navigation & Restart */}
       <View style={styles.topRow}>
-        <View style={styles.leftGroup}>
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              {
-                borderColor: themeColors.border,
-                backgroundColor: themeColors.border + '22',
-              },
-            ]}
-            onPress={onBack}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.navText, { color: themeColors.textSecondary }]}>← Menu</Text>
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: themeColors.textPrimary }]}>Paper Trace</Text>
-        </View>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            {
+              borderColor: themeColors.border,
+              backgroundColor: themeColors.border + '22',
+            },
+          ]}
+          onPress={onBack}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.navText, { color: themeColors.textSecondary }]}>← Menu</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[
@@ -56,7 +57,7 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
           onPress={onReset}
           activeOpacity={0.7}
         >
-          <Text style={[styles.resetText, { color: themeColors.accent }]}>Reset</Text>
+          <Text style={[styles.resetText, { color: themeColors.accent }]}>Reset Game</Text>
         </TouchableOpacity>
       </View>
 
@@ -65,6 +66,39 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
         <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>
           Opponent: <Text style={{ color: themeColors.p2Shades[0], fontWeight: '700' }}>{formatDiff(difficulty)} Bot</Text>
         </Text>
+
+        {/* Opponent's remaining tokens display */}
+        <View style={styles.opponentTokensRow}>
+          <Text style={[styles.opponentTokensLabel, { color: themeColors.textSecondary }]}>
+            {activePlayer === 1 ? 'Bot' : 'Your'} Pool:
+          </Text>
+          <View style={styles.tokenBadgesContainer}>
+            {[1, 2, 3, 4, 5].map((val) => {
+              const opponentTokens = activePlayer === 1 ? player2Tokens : player1Tokens;
+              const count = opponentTokens[val] || 0;
+              return (
+                <View
+                  key={`opp_tok_${val}`}
+                  style={[
+                    styles.tokenBadge,
+                    {
+                      borderColor: count > 0 ? themeColors.border : themeColors.border + '44',
+                      backgroundColor: count > 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.01)',
+                      opacity: count > 0 ? 1 : 0.45,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.tokenBadgeText, { color: count > 0 ? themeColors.textPrimary : themeColors.textSecondary }]}>
+                    {val}
+                  </Text>
+                  <Text style={[styles.tokenCountText, { color: count > 0 ? themeColors.accent : themeColors.textSecondary }]}>
+                    x{count}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
       </View>
 
       {/* Turn Indicator Banner */}
@@ -106,10 +140,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1.5,
     elevation: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
   },
   topRow: {
     flexDirection: 'row',
@@ -122,31 +152,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navButton: {
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    marginRight: 12,
+    borderWidth: 1.5,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    elevation: 2,
   },
   navText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
   resetButton: {
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    borderWidth: 1.5,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    elevation: 2,
   },
   resetText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
@@ -190,5 +216,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  opponentTokensRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  opponentTokensLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginRight: 8,
+  },
+  tokenBadgesContainer: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  tokenBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    gap: 3,
+  },
+  tokenBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  tokenCountText: {
+    fontSize: 9,
+    fontWeight: '800',
   },
 });
