@@ -52,6 +52,7 @@ export default function GameScreen() {
   } = usePaperSession(difficulty);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const handleExecute = () => {
     setErrorMsg(null);
@@ -88,11 +89,7 @@ export default function GameScreen() {
         themeColors={themeColors}
       />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.mainContainer}>
         {/* Error banner */}
         {errorMsg && (
           <View style={[styles.errorBanner, { borderColor: '#EF4444', backgroundColor: '#FEE2E2' }]}>
@@ -112,7 +109,11 @@ export default function GameScreen() {
           themeColors={themeColors}
           killEffect={killEffect}
           onSelectDirection={selectDirection}
-          onGestureEnd={handleExecute}
+          onGestureStart={() => setScrollEnabled(false)}
+          onGestureEnd={() => {
+            handleExecute();
+            setScrollEnabled(true);
+          }}
         />
 
         {/* Play controls card */}
@@ -176,35 +177,8 @@ export default function GameScreen() {
           </View>
         )}
 
-        {/* History log notes */}
-        {historyLogs.length > 0 && (
-          <View
-            style={[
-              styles.logCard,
-              {
-                backgroundColor: themeColors.cardBackground,
-                borderColor: themeColors.border,
-              },
-            ]}
-          >
-            <Text style={[styles.logHeader, { color: themeColors.textPrimary }]}>Match Log</Text>
-            <View style={[styles.logDivider, { backgroundColor: themeColors.border }]} />
-            {historyLogs.slice(0, 5).map((log, idx) => (
-              <View key={`log_${idx}`} style={styles.logItem}>
-                <Text
-                  style={[
-                    styles.logText,
-                    { color: idx === 0 ? themeColors.textPrimary : themeColors.textSecondary },
-                  ]}
-                >
-                  {idx === 0 ? '• ' : '  '}
-                  {log}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+
+      </View>
     </SafeAreaView>
   );
 }
@@ -213,12 +187,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  scrollView: {
+  mainContainer: {
     flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 32,
     alignItems: 'center',
+    justifyContent: 'space-evenly',
+    width: '100%',
   },
   errorBanner: {
     borderWidth: 1,
@@ -293,34 +266,5 @@ const styles = StyleSheet.create({
   },
   padWrapper: {
     marginTop: 12,
-  },
-  logCard: {
-    width: '92%',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    padding: 16,
-    marginVertical: 12,
-    elevation: 3,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  logHeader: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  logDivider: {
-    height: 1,
-    marginVertical: 8,
-  },
-  logItem: {
-    marginVertical: 4,
-  },
-  logText: {
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '500',
   },
 });

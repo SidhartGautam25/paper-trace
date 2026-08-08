@@ -18,6 +18,7 @@ interface GridCanvasProps {
   killEffect: 'collapse' | 'explode' | 'dissolve';
   onSelectDirection: (dir: Direction) => void;
   onGestureEnd: () => void;
+  onGestureStart?: () => void;
 }
 
 export const GridCanvas: React.FC<GridCanvasProps> = ({
@@ -31,6 +32,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   killEffect,
   onSelectDirection,
   onGestureEnd,
+  onGestureStart,
 }) => {
   const cellSize = GRID_CONFIG.CELL_SIZE;
   const offsetX = 24;
@@ -64,6 +66,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const handleStart = (clientX: number, clientY: number) => {
     if (!selectedDotId || selectedToken === null) return;
     setDragStart({ x: clientX, y: clientY });
+    onGestureStart?.();
   };
 
   const handleMove = (clientX: number, clientY: number) => {
@@ -223,7 +226,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const baseColor = getDotColor(selectedDotId, 1);
 
     return (
-      <G opacity={0.25}>
+      <G opacity={0.45}>
         {directions.map((dir) => {
           const endPos = getDestination(startPos, dir, selectedToken);
           if (!isWithinBounds(endPos)) return null;
@@ -242,17 +245,17 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
                 x2={x2}
                 y2={y2}
                 stroke={baseColor}
-                strokeWidth={1.2}
-                strokeDasharray="3, 3"
+                strokeWidth={2.0}
+                strokeDasharray="4, 4"
               />
               {/* Destination marker ring */}
               <Circle
                 cx={x2}
                 cy={y2}
-                r={4}
+                r={5.5}
                 fill="none"
                 stroke={baseColor}
-                strokeWidth={1}
+                strokeWidth={1.5}
               />
             </G>
           );
@@ -460,5 +463,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     marginVertical: 12,
+    // @ts-ignore
+    touchAction: 'none',
   },
 });
