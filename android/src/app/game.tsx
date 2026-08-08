@@ -63,7 +63,11 @@ export default function GameScreen() {
   };
 
   const handleBack = () => {
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   };
 
   return (

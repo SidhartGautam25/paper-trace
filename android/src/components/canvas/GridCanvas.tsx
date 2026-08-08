@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import Svg, { Line, Circle, G, Rect } from 'react-native-svg';
 import { Dot, Direction, Point } from '../../types/game';
 import { GRID_CONFIG } from '../../constants/board';
@@ -212,6 +212,55 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     }
   }
 
+  // Draw 8-way tactical move guidelines
+  const renderMoveGuides = () => {
+    if (!selectedDotId || selectedToken === null) return null;
+    const movingDot = dots.find((d) => d.id === selectedDotId);
+    if (!movingDot) return null;
+
+    const startPos = movingDot.currentPos;
+    const directions: Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const baseColor = getDotColor(selectedDotId, 1);
+
+    return (
+      <G opacity={0.25}>
+        {directions.map((dir) => {
+          const endPos = getDestination(startPos, dir, selectedToken);
+          if (!isWithinBounds(endPos)) return null;
+
+          const x1 = startPos.c * cellSize + offsetX;
+          const y1 = startPos.r * cellSize + offsetY;
+          const x2 = endPos.c * cellSize + offsetX;
+          const y2 = endPos.r * cellSize + offsetY;
+
+          return (
+            <G key={`guide_${dir}`}>
+              {/* Thin dashed guide line */}
+              <Line
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={baseColor}
+                strokeWidth={1.2}
+                strokeDasharray="3, 3"
+              />
+              {/* Destination marker ring */}
+              <Circle
+                cx={x2}
+                cy={y2}
+                r={4}
+                fill="none"
+                stroke={baseColor}
+                strokeWidth={1}
+              />
+            </G>
+          );
+        })}
+      </G>
+    );
+  };
+
   // Draw move preview vector (incorporating dot-specific style)
   const renderPreview = () => {
     if (!selectedDotId || selectedToken === null || !selectedDirection) return null;
@@ -345,6 +394,9 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
           ));
         })}
 
+        {/* Trajectory guide lines */}
+        {renderMoveGuides()}
+
         {/* Preview trajectory vector */}
         {renderPreview()}
 
@@ -362,12 +414,38 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               cellSize={cellSize}
               offsetX={offsetX}
               offsetY={offsetY}
-              onPress={() => onSelectDot(dot.id)}
               killEffect={killEffect}
             />
           );
         })}
       </Svg>
+
+      {/* Absolute overlay for reliable cross-platform tap targets */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {dots.map((dot) => {
+          if (!dot || !dot.isAlive) return null;
+          // Calculate click target center coordinates
+          const cx = dot.currentPos.c * cellSize + offsetX;
+          const cy = dot.currentPos.r * cellSize + offsetY;
+
+          return (
+            <TouchableOpacity
+              key={`tap_${dot.id}`}
+              style={{
+                position: 'absolute',
+                left: cx - 22,
+                top: cy - 22,
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: 'transparent',
+              }}
+              onPress={() => onSelectDot(dot.id)}
+              activeOpacity={0.65}
+            />
+          );
+        })}
+      </View>
     </View>
   );
 };

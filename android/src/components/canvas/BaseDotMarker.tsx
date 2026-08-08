@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
   withSequence,
 } from 'react-native-reanimated';
+import { Platform } from 'react-native';
 import { Dot } from '../../types/game';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -18,7 +19,6 @@ interface BaseDotMarkerProps {
   cellSize: number;
   offsetX: number;
   offsetY: number;
-  onPress: () => void;
   killEffect: 'collapse' | 'explode' | 'dissolve';
 }
 
@@ -29,7 +29,6 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   cellSize,
   offsetX,
   offsetY,
-  onPress,
   killEffect,
 }) => {
   if (!dot || !dot.currentPos) return null;
@@ -188,16 +187,6 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
         />
       )}
 
-      {/* Large Transparent Tap target */}
-      {dot.isAlive && (
-        <Circle
-          cx={cx}
-          cy={cy}
-          r={22}
-          fill="transparent"
-          onPress={onPress}
-        />
-      )}
     </G>
   );
 };
