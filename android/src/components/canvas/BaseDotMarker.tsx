@@ -22,6 +22,7 @@ interface BaseDotMarkerProps {
   offsetX: number;
   offsetY: number;
   killEffect: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer';
+  themeColors: any;
 }
 
 export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
@@ -32,6 +33,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   offsetX,
   offsetY,
   killEffect,
+  themeColors,
 }) => {
   if (!dot || !dot.currentPos) return null;
 
@@ -60,17 +62,32 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   // Transition aliveVal from 1.0 to 0.0 on death
   useEffect(() => {
     if (!dot.isAlive) {
-      aliveVal.value = withTiming(0.0, { duration: 800 });
+      aliveVal.value = withTiming(0.0, { duration: 2500 });
     } else {
       aliveVal.value = 1.0;
     }
   }, [dot.isAlive]);
 
+  const killerColor = themeColors ? (dot.player === 1 ? themeColors.p2Shades[0] : themeColors.p1Shades[0]) : '#EF4444';
+
   // Core dot animation props
   const coreProps = useAnimatedProps(() => {
+    const val = aliveVal.value;
+    if (killEffect === 'monster' || killEffect === 'hammer') {
+      let opacity = 0;
+      let scale = 0;
+      if (val >= 0.4) {
+        opacity = (val - 0.4) / 0.6;
+        scale = opacity;
+      }
+      return {
+        r: 7.8 * pulse.value * scale,
+        opacity: opacity,
+      };
+    }
     return {
-      r: 7.8 * pulse.value * aliveVal.value,
-      opacity: aliveVal.value,
+      r: 7.8 * pulse.value * val,
+      opacity: val,
     };
   });
 
@@ -107,72 +124,91 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
 
   // Effect 4: Monster Chomper props
   const topJawProps = useAnimatedProps(() => {
-    const ty = -14 * aliveVal.value; // opens up to -14px
-    const opacity = 1 - aliveVal.value;
+    const val = aliveVal.value;
+    const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
+    const ty = -28 * progress; // opens up to -28px (massive!)
+    let opacity = 0;
+    if (val >= 0.4) {
+      opacity = (1 - val) / 0.6;
+    } else {
+      opacity = val / 0.4;
+    }
     return {
-      transform: `translate(${cx}, ${cy + ty})`,
-      opacity,
+      translateX: cx,
+      translateY: cy + ty,
+      opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
 
   const bottomJawProps = useAnimatedProps(() => {
-    const ty = 14 * aliveVal.value; // opens down to 14px
-    const opacity = 1 - aliveVal.value;
+    const val = aliveVal.value;
+    const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
+    const ty = 28 * progress; // opens down to 28px
+    let opacity = 0;
+    if (val >= 0.4) {
+      opacity = (1 - val) / 0.6;
+    } else {
+      opacity = val / 0.4;
+    }
     return {
-      transform: `translate(${cx}, ${cy + ty})`,
-      opacity,
+      translateX: cx,
+      translateY: cy + ty,
+      opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
 
   // Effect 5: Hammer Smash props
   const hammerProps = useAnimatedProps(() => {
-    const rotation = -75 * aliveVal.value; // swings from -75deg to 0deg
-    const opacity = 1 - aliveVal.value;
+    const val = aliveVal.value;
+    const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
+    const rotation = -70 * progress;
+    const tx = cx + 60 * progress;
+    const ty = cy - 70 * progress;
+    
+    let opacity = 0;
+    if (val >= 0.4) {
+      opacity = (1 - val) / 0.6;
+    } else {
+      opacity = val / 0.4;
+    }
     return {
-      transform: `translate(${cx}, ${cy}) rotate(${rotation})`,
-      opacity,
+      translateX: tx,
+      translateY: ty,
+      rotation: rotation,
+      originX: 0,
+      originY: 0,
+      opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
 
-  const shard1Props = useAnimatedProps(() => {
-    const dist = (1 - aliveVal.value) * 16;
-    const opacity = Math.max(0, Math.min(aliveVal.value * (1 - aliveVal.value) * 3, 1.0));
-    return {
-      cx: cx - dist,
-      cy: cy - dist,
-      opacity,
-    };
-  });
+  const shardProps = (angle: number, maxDist: number) => {
+    return useAnimatedProps(() => {
+      const val = aliveVal.value;
+      if (val >= 0.4) {
+        return {
+          cx: cx,
+          cy: cy,
+          opacity: 0,
+        };
+      }
+      const progress = (0.4 - val) / 0.4;
+      const dist = progress * maxDist;
+      const opacity = 1 - progress;
+      const rad = (angle * Math.PI) / 180;
+      return {
+        cx: cx + Math.cos(rad) * dist,
+        cy: cy + Math.sin(rad) * dist,
+        opacity: opacity,
+      };
+    });
+  };
 
-  const shard2Props = useAnimatedProps(() => {
-    const dist = (1 - aliveVal.value) * 16;
-    const opacity = Math.max(0, Math.min(aliveVal.value * (1 - aliveVal.value) * 3, 1.0));
-    return {
-      cx: cx + dist,
-      cy: cy - dist,
-      opacity,
-    };
-  });
-
-  const shard3Props = useAnimatedProps(() => {
-    const dist = (1 - aliveVal.value) * 16;
-    const opacity = Math.max(0, Math.min(aliveVal.value * (1 - aliveVal.value) * 3, 1.0));
-    return {
-      cx: cx - dist,
-      cy: cy + dist,
-      opacity,
-    };
-  });
-
-  const shard4Props = useAnimatedProps(() => {
-    const dist = (1 - aliveVal.value) * 16;
-    const opacity = Math.max(0, Math.min(aliveVal.value * (1 - aliveVal.value) * 3, 1.0));
-    return {
-      cx: cx + dist,
-      cy: cy + dist,
-      opacity,
-    };
-  });
+  const shard1Props = shardProps(0, 32);
+  const shard2Props = shardProps(60, 32);
+  const shard3Props = shardProps(120, 32);
+  const shard4Props = shardProps(180, 32);
+  const shard5Props = shardProps(240, 32);
+  const shard6Props = shardProps(300, 32);
 
   return (
     <G>
@@ -189,7 +225,26 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
         />
       )}
 
-      {/* Render selected elimination visual trace */}
+      {/* Core Dot (Animated Pulse & Fade) */}
+      <AnimatedCircle
+        cx={cx}
+        cy={cy}
+        fill={color}
+        animatedProps={coreProps}
+      />
+
+      {/* Inner Highlight Dot */}
+      {dot.isAlive && (
+        <Circle
+          cx={cx - 1.5}
+          cy={cy - 1.5}
+          r={1.8}
+          fill="#FFFFFF"
+          opacity={0.65}
+        />
+      )}
+
+      {/* Render selected elimination visual trace (Drawn ON TOP of core dot) */}
       {killEffect === 'collapse' && (
         <AnimatedCircle
           cx={cx}
@@ -242,36 +297,29 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       {killEffect === 'monster' && (
         <G>
           {/* Monster Chomper Top Jaw */}
-          <AnimatedPath
-            d="M -12,-3 Q 0,-15 12,-3 L 12,0 L 8,-4 L 4,0 L 0,-4 L -4,0 L -8,-4 L -12,0 Z"
-            fill="#EF4444"
-            stroke="#DC2626"
-            strokeWidth={1}
-            animatedProps={topJawProps}
-          />
-          {/* Monster Eyes */}
-          <AnimatedCircle
-            cx={-4}
-            cy={-6}
-            r={1.8}
-            fill="#FDE047"
-            animatedProps={topJawProps}
-          />
-          <AnimatedCircle
-            cx={4}
-            cy={-6}
-            r={1.8}
-            fill="#FDE047"
-            animatedProps={topJawProps}
-          />
+          <AnimatedG animatedProps={topJawProps}>
+            <Path
+              d="M -28,-4 Q 0,-30 28,-4 L 28,0 L 20,-8 L 12,0 L 0,-10 L -12,0 L -20,-8 L -28,0 Z"
+              fill={killerColor}
+              stroke="rgba(0, 0, 0, 0.4)"
+              strokeWidth={1}
+            />
+            {/* Monster Eyes */}
+            <Circle cx={-9} cy={-14} r={3.5} fill="#FDE047" />
+            <Circle cx={9} cy={-14} r={3.5} fill="#FDE047" />
+            <Circle cx={-9} cy={-14} r={1.2} fill="#000000" />
+            <Circle cx={9} cy={-14} r={1.2} fill="#000000" />
+          </AnimatedG>
+
           {/* Monster Chomper Bottom Jaw */}
-          <AnimatedPath
-            d="M -12,3 Q 0,15 12,3 L 12,0 L 8,4 L 4,0 L 0,4 L -4,0 L -8,4 L -12,0 Z"
-            fill="#EF4444"
-            stroke="#DC2626"
-            strokeWidth={1}
-            animatedProps={bottomJawProps}
-          />
+          <AnimatedG animatedProps={bottomJawProps}>
+            <Path
+              d="M -28,4 Q 0,30 28,4 L 28,0 L 20,8 L 12,0 L 0,10 L -12,0 L -20,8 L -28,0 Z"
+              fill={killerColor}
+              stroke="rgba(0, 0, 0, 0.4)"
+              strokeWidth={1}
+            />
+          </AnimatedG>
         </G>
       )}
 
@@ -280,50 +328,33 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
           {/* Smash Hammer */}
           <AnimatedG animatedProps={hammerProps}>
             <Rect
-              x={-2}
-              y={-28}
-              width={4}
-              height={20}
-              rx={1.5}
+              x={-3.5}
+              y={-87}
+              width={7}
+              height={75}
+              rx={2}
               fill="#D97706"
             />
             <Rect
-              x={-10}
-              y={-36}
-              width={20}
-              height={9}
-              rx={2}
+              x={-20}
+              y={-99}
+              width={40}
+              height={24}
+              rx={4}
               fill="#64748B"
-              stroke="#94A3B8"
-              strokeWidth={1}
+              stroke={killerColor}
+              strokeWidth={1.5}
             />
           </AnimatedG>
 
-          {/* Flying Fragments */}
-          <AnimatedCircle r={2.5} fill="#E2E8F0" animatedProps={shard1Props} />
-          <AnimatedCircle r={2.5} fill="#E2E8F0" animatedProps={shard2Props} />
-          <AnimatedCircle r={2.5} fill="#E2E8F0" animatedProps={shard3Props} />
-          <AnimatedCircle r={2.5} fill="#E2E8F0" animatedProps={shard4Props} />
+          {/* Flying Fragments in all 6 directions (crashing) */}
+          <AnimatedCircle r={4.5} fill={color} animatedProps={shard1Props} />
+          <AnimatedCircle r={4.5} fill={color} animatedProps={shard2Props} />
+          <AnimatedCircle r={4.5} fill={color} animatedProps={shard3Props} />
+          <AnimatedCircle r={4.5} fill={color} animatedProps={shard4Props} />
+          <AnimatedCircle r={4.5} fill={color} animatedProps={shard5Props} />
+          <AnimatedCircle r={4.5} fill={color} animatedProps={shard6Props} />
         </G>
-      )}
-
-      {/* Core Dot (Animated Pulse & Fade) */}
-      <AnimatedCircle
-        cx={cx}
-        cy={cy}
-        fill={color}
-        animatedProps={coreProps}
-      />
-
-      {/* Inner Highlight Dot */}
-      {dot.isAlive && (
-        <Circle
-          cx={cx - 1.5}
-          cy={cy - 1.5}
-          r={1.8}
-          fill="#FFFFFF"
-          opacity={0.65}
-        />
       )}
 
     </G>

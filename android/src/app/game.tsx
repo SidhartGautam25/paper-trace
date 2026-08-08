@@ -25,7 +25,7 @@ export default function GameScreen() {
     ? params.difficulty
     : 'medium';
   const themeId = params.themeId || 'cyber-neon';
-  const killEffect = (params.killEffect === 'collapse' || params.killEffect === 'explode' || params.killEffect === 'dissolve')
+  const killEffect = (params.killEffect === 'collapse' || params.killEffect === 'explode' || params.killEffect === 'dissolve' || params.killEffect === 'monster' || params.killEffect === 'hammer')
     ? params.killEffect
     : 'collapse';
 

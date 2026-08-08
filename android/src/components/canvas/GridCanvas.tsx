@@ -418,6 +418,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               offsetX={offsetX}
               offsetY={offsetY}
               killEffect={killEffect}
+              themeColors={themeColors}
             />
           );
         })}
