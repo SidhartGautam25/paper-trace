@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Circle, G, Path, Rect } from 'react-native-svg';
 import Animated, {
   useAnimatedProps,
+  useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
@@ -134,8 +135,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      translateX: cx,
-      translateY: cy + ty,
+      transform: `translate(${cx}, ${cy + ty})`,
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
@@ -151,8 +151,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      translateX: cx,
-      translateY: cy + ty,
+      transform: `translate(${cx}, ${cy + ty})`,
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
@@ -172,11 +171,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      translateX: tx,
-      translateY: ty,
-      rotation: rotation,
-      originX: 0,
-      originY: 0,
+      transform: `translate(${tx}, ${ty}) rotate(${rotation})`,
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
