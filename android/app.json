@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "android",
-    "slug": "android",
+    "name": "paper-trace",
+    "slug": "paper-trace",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "android",
+    "scheme": "paper-trace",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -37,6 +37,9 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {}
     }
   }
 }
