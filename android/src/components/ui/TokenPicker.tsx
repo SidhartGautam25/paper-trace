@@ -1,0 +1,131 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { TokenPool } from '../../types/game';
+
+interface TokenPickerProps {
+  tokens: TokenPool;
+  selectedToken: number | null;
+  onSelectToken: (value: number) => void;
+  themeColors: any;
+}
+
+export const TokenPicker: React.FC<TokenPickerProps> = ({
+  tokens,
+  selectedToken,
+  onSelectToken,
+  themeColors,
+}) => {
+  const tokenValues = [1, 2, 3, 4, 5];
+
+  return (
+    <View style={styles.container}>
+      <Text style={[styles.label, { color: themeColors.textSecondary }]}>
+        Select Distance Token
+      </Text>
+      <View style={styles.row}>
+        {tokenValues.map((val) => {
+          const count = tokens[val] || 0;
+          const isSelected = selectedToken === val;
+          const isDisabled = count === 0;
+
+          return (
+            <TouchableOpacity
+              key={`token_${val}`}
+              disabled={isDisabled}
+              style={[
+                styles.tokenCard,
+                {
+                  backgroundColor: isSelected
+                    ? themeColors.player1Ink
+                    : themeColors.cardBackground,
+                  borderColor: isSelected ? themeColors.player1Ink : themeColors.border,
+                  opacity: isDisabled ? 0.35 : 1.0,
+                },
+              ]}
+              onPress={() => onSelectToken(val)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.tokenValue,
+                  { color: isSelected ? '#FFFFFF' : themeColors.textPrimary },
+                ]}
+              >
+                {val}
+              </Text>
+              
+              <View
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor: isSelected
+                      ? 'rgba(255, 255, 255, 0.25)'
+                      : themeColors.player1InkLight,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.badgeText,
+                    { color: isSelected ? '#FFFFFF' : themeColors.player1Ink },
+                  ]}
+                >
+                  {count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    marginVertical: 10,
+    width: '100%',
+    paddingHorizontal: 16,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  tokenCard: {
+    flex: 1,
+    marginHorizontal: 4,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+  },
+  tokenValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  badge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+});
