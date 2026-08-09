@@ -24,6 +24,7 @@ interface BaseDotMarkerProps {
   offsetY: number;
   killEffect: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer' | 'burn' | 'firecracker';
   themeColors: any;
+  shape?: 'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star';
 }
 
 export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
@@ -35,6 +36,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   offsetY,
   killEffect,
   themeColors,
+  shape = 'circle',
 }) => {
   if (!dot || !dot.currentPos) return null;
 
@@ -69,28 +71,32 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
     }
   }, [dot.isAlive]);
 
-  const killerColor = themeColors ? (dot.player === 1 ? themeColors.p2Shades[0] : themeColors.p1Shades[0]) : '#EF4444';
-
-  // Core dot animation props
-  const coreProps = useAnimatedProps(() => {
+  const shapeStyle = useAnimatedStyle(() => {
     const val = aliveVal.value;
+    let scale = val;
+    let opacity = val;
     if (killEffect === 'monster' || killEffect === 'hammer') {
-      let opacity = 0;
-      let scale = 0;
       if (val >= 0.4) {
         opacity = (val - 0.4) / 0.6;
         scale = opacity;
+      } else {
+        opacity = 0;
+        scale = 0;
       }
-      return {
-        r: 7.8 * pulse.value * scale,
-        opacity: opacity,
-      };
     }
     return {
-      r: 7.8 * pulse.value * val,
-      opacity: val,
+      transform: [
+        { translateX: cx },
+        { translateY: cy },
+        { scale: pulse.value * scale },
+      ],
+      opacity: opacity,
     };
   });
+
+  const killerColor = themeColors ? (dot.player === 1 ? themeColors.p2Shades[0] : themeColors.p1Shades[0]) : '#EF4444';
+
+
 
   // Effect 1: Blackhole Implosion props (peaks at mid-point, then fades to 0)
   const collapseRingProps = useAnimatedProps(() => {
@@ -313,6 +319,53 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   const firecrackerSpark6Props = firecrackerSparkProps(225, '#B026FF');
   const firecrackerSpark7Props = firecrackerSparkProps(270, '#FFFF00');
   const firecrackerSpark8Props = firecrackerSparkProps(315, '#00FFFF');
+  const renderShape = () => {
+    switch (shape) {
+      case 'arrow':
+        return (
+          <G>
+            <Path d="M 0,-9 L 8,7 L 0,3 L -8,7 Z" fill={color} />
+            <Path d="M 0,-4 L 3,3 L 0,1 L -3,3 Z" fill="#FFFFFF" opacity={0.65} />
+          </G>
+        );
+      case 'hexagon':
+        return (
+          <G>
+            <Path d="M 0,-8 L 7,-4 L 7,4 L 0,8 L -7,4 L -7,-4 Z" fill={color} />
+            <Path d="M 0,-4 L 3.5,-2 L 3.5,2 L 0,4 L -3.5,2 L -3.5,-2 Z" fill="#FFFFFF" opacity={0.65} />
+          </G>
+        );
+      case 'diamond':
+        return (
+          <G>
+            <Path d="M 0,-9 L 8,0 L 0,9 L -8,0 Z" fill={color} />
+            <Path d="M 0,-4 L 3.5,0 L 0,4 L -3.5,0 Z" fill="#FFFFFF" opacity={0.65} />
+          </G>
+        );
+      case 'square':
+        return (
+          <G>
+            <Rect x={-7} y={-7} width={14} height={14} rx={1.5} fill={color} />
+            <Rect x={-3} y={-3} width={6} height={6} rx={0.5} fill="#FFFFFF" opacity={0.65} />
+          </G>
+        );
+      case 'star':
+        return (
+          <G>
+            <Path d="M 0,-9 Q 0,-2 7,0 Q 0,2 0,9 Q 0,2 -7,0 Q 0,-2 0,-9 Z" fill={color} />
+            <Circle cx={0} cy={0} r={2} fill="#FFFFFF" opacity={0.65} />
+          </G>
+        );
+      case 'circle':
+      default:
+        return (
+          <G>
+            <Circle cx={0} cy={0} r={7.8} fill={color} />
+            <Circle cx={-1.5} cy={-1.5} r={1.8} fill="#FFFFFF" opacity={0.65} />
+          </G>
+        );
+    }
+  };
 
   return (
     <G>
@@ -329,24 +382,11 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
         />
       )}
 
-      {/* Core Dot (Animated Pulse & Fade) */}
-      <AnimatedCircle
-        cx={cx}
-        cy={cy}
-        fill={color}
-        animatedProps={coreProps}
-      />
-
-      {/* Inner Highlight Dot */}
-      {dot.isAlive && (
-        <Circle
-          cx={cx - 1.5}
-          cy={cy - 1.5}
-          r={1.8}
-          fill="#FFFFFF"
-          opacity={0.65}
-        />
-      )}
+      {/* Core Shape (Animated Transform, Pulse & Fade) */}
+      {/* @ts-ignore */}
+      <AnimatedG style={shapeStyle}>
+        {renderShape()}
+      </AnimatedG>
 
       {/* Render selected elimination visual trace (Drawn ON TOP of core dot) */}
       {killEffect === 'collapse' && (

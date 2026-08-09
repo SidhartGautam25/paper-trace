@@ -30,6 +30,8 @@ export default function GameScreen() {
     p1LineColor?: string;
     p2DotColor?: string;
     p2LineColor?: string;
+    p1DotShape?: string;
+    p2DotShape?: string;
   }>();
   const insets = useSafeAreaInsets();
   
@@ -51,6 +53,14 @@ export default function GameScreen() {
   const p1LineColor = params.p1LineColor || themeColors.p1Shades[0];
   const p2DotColor = params.p2DotColor || themeColors.p2Shades[0];
   const p2LineColor = params.p2LineColor || themeColors.p2Shades[0];
+
+  // Custom Shapes
+  const p1DotShape = (params.p1DotShape === 'circle' || params.p1DotShape === 'arrow' || params.p1DotShape === 'hexagon' || params.p1DotShape === 'diamond' || params.p1DotShape === 'square' || params.p1DotShape === 'star')
+    ? params.p1DotShape
+    : 'circle';
+  const p2DotShape = (params.p2DotShape === 'circle' || params.p2DotShape === 'arrow' || params.p2DotShape === 'hexagon' || params.p2DotShape === 'diamond' || params.p2DotShape === 'square' || params.p2DotShape === 'star')
+    ? params.p2DotShape
+    : 'circle';
 
   // Custom Lines
   const selectedLines = params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow'];
@@ -180,6 +190,8 @@ export default function GameScreen() {
               p1LineColor={p1LineColor}
               p2DotColor={p2DotColor}
               p2LineColor={p2LineColor}
+              p1DotShape={p1DotShape}
+              p2DotShape={p2DotShape}
               selectedLines={selectedLines}
               maxHeight={boardLayout.height}
               maxWidth={boardLayout.width}

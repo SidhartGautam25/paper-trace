@@ -25,6 +25,8 @@ export default function HomeScreen() {
     p1LineColor?: string;
     p2DotColor?: string;
     p2LineColor?: string;
+    p1DotShape?: string;
+    p2DotShape?: string;
   }>();
   const insets = useSafeAreaInsets();
 
@@ -55,6 +57,10 @@ export default function HomeScreen() {
   const [p2DotColor, setP2DotColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p2);
   const [p2LineColor, setP2LineColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p2);
 
+  // Custom Shapes State
+  const [p1DotShape, setP1DotShape] = useState<'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star'>('circle');
+  const [p2DotShape, setP2DotShape] = useState<'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star'>('circle');
+
   // Synchronize state with route params when coming back from Settings
   useEffect(() => {
     if (params.difficulty) setSelectedDifficulty(params.difficulty as any);
@@ -73,7 +79,20 @@ export default function HomeScreen() {
     }
     if (params.killEffect) setSelectedKillEffect(params.killEffect as any);
     if (params.lines) setSelectedLines(params.lines);
-  }, [params.difficulty, params.themeId, params.killEffect, params.lines, params.p1DotColor, params.p1LineColor, params.p2DotColor, params.p2LineColor]);
+    if (params.p1DotShape) setP1DotShape(params.p1DotShape as any);
+    if (params.p2DotShape) setP2DotShape(params.p2DotShape as any);
+  }, [
+    params.difficulty,
+    params.themeId,
+    params.killEffect,
+    params.lines,
+    params.p1DotColor,
+    params.p1LineColor,
+    params.p2DotColor,
+    params.p2LineColor,
+    params.p1DotShape,
+    params.p2DotShape,
+  ]);
 
   const currentEffect = KILL_EFFECTS.find((e) => e.id === selectedKillEffect) || KILL_EFFECTS[0];
 
@@ -95,6 +114,8 @@ export default function HomeScreen() {
         p1LineColor,
         p2DotColor,
         p2LineColor,
+        p1DotShape,
+        p2DotShape,
       },
     });
   };
@@ -111,6 +132,8 @@ export default function HomeScreen() {
         p1LineColor,
         p2DotColor,
         p2LineColor,
+        p1DotShape,
+        p2DotShape,
       },
     });
   };

@@ -24,6 +24,8 @@ interface GridCanvasProps {
   p1LineColor: string;
   p2DotColor: string;
   p2LineColor: string;
+  p1DotShape?: 'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star';
+  p2DotShape?: 'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star';
   selectedLines: string[];
   maxHeight: number;
   maxWidth: number;
@@ -45,6 +47,8 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   p1LineColor,
   p2DotColor,
   p2LineColor,
+  p1DotShape = 'circle',
+  p2DotShape = 'circle',
   selectedLines,
   maxHeight,
   maxWidth,
@@ -462,6 +466,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               offsetY={offsetY}
               killEffect={killEffect}
               themeColors={themeColors}
+              shape={dot.player === 1 ? p1DotShape : p2DotShape}
             />
           );
         })}

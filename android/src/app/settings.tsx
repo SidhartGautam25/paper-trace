@@ -13,6 +13,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES, KILL_EFFECTS } from '../constants/theme';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -25,6 +26,8 @@ export default function SettingsScreen() {
     p1LineColor?: string;
     p2DotColor?: string;
     p2LineColor?: string;
+    p1DotShape?: string;
+    p2DotShape?: string;
   }>();
   const insets = useSafeAreaInsets();
 
@@ -81,6 +84,23 @@ export default function SettingsScreen() {
     params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow']
   );
 
+  // Shape configurations
+  const [p1DotShape, setP1DotShape] = useState<'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star'>(
+    (params.p1DotShape as any) || 'circle'
+  );
+  const [p2DotShape, setP2DotShape] = useState<'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star'>(
+    (params.p2DotShape as any) || 'circle'
+  );
+
+  const availableShapes = [
+    { id: 'circle', label: 'Classic Circle', desc: 'Symmetrical circular neon aura' },
+    { id: 'arrow', label: 'Stealth Arrow', desc: 'Triangulated aerodynamic pointer' },
+    { id: 'hexagon', label: 'Cyber Hexagon', desc: 'Six-sided high-tech vector construct' },
+    { id: 'diamond', label: 'Neon Diamond', desc: 'Four-sided sharp energy diamond' },
+    { id: 'square', label: 'Power Square', desc: 'Solid cybernetic modular square block' },
+    { id: 'star', label: 'Nova Star', desc: 'Four-pointed radiating starburst' },
+  ];
+
   const COLOR_PALETTE = [
     { value: '#00F2FF', label: 'Cyan' },
     { value: '#FE53BB', label: 'Pink' },
@@ -102,6 +122,54 @@ export default function SettingsScreen() {
   const getColorLabel = (currentValue: string) => {
     const matched = COLOR_PALETTE.find(c => c.value.toLowerCase() === currentValue.toLowerCase());
     return matched ? matched.label : 'Custom';
+  };
+
+  const renderShapePreview = (shapeId: string, color: string) => {
+    switch (shapeId) {
+      case 'arrow':
+        return (
+          <Svg width={20} height={20} viewBox="-10 -10 20 20">
+            <Path d="M 0,-9 L 8,7 L 0,3 L -8,7 Z" fill={color} />
+            <Path d="M 0,-4 L 3,3 L 0,1 L -3,3 Z" fill="#FFFFFF" opacity={0.65} />
+          </Svg>
+        );
+      case 'hexagon':
+        return (
+          <Svg width={20} height={20} viewBox="-10 -10 20 20">
+            <Path d="M 0,-8 L 7,-4 L 7,4 L 0,8 L -7,4 L -7,-4 Z" fill={color} />
+            <Path d="M 0,-4 L 3.5,-2 L 3.5,2 L 0,4 L -3.5,2 L -3.5,-2 Z" fill="#FFFFFF" opacity={0.65} />
+          </Svg>
+        );
+      case 'diamond':
+        return (
+          <Svg width={20} height={20} viewBox="-10 -10 20 20">
+            <Path d="M 0,-9 L 8,0 L 0,9 L -8,0 Z" fill={color} />
+            <Path d="M 0,-4 L 3.5,0 L 0,4 L -3.5,0 Z" fill="#FFFFFF" opacity={0.65} />
+          </Svg>
+        );
+      case 'square':
+        return (
+          <Svg width={20} height={20} viewBox="-10 -10 20 20">
+            <Rect x={-7} y={-7} width={14} height={14} rx={1.5} fill={color} />
+            <Rect x={-3} y={-3} width={6} height={6} rx={0.5} fill="#FFFFFF" opacity={0.65} />
+          </Svg>
+        );
+      case 'star':
+        return (
+          <Svg width={20} height={20} viewBox="-10 -10 20 20">
+            <Path d="M 0,-9 Q 0,-2 7,0 Q 0,2 0,9 Q 0,2 -7,0 Q 0,-2 0,-9 Z" fill={color} />
+            <Circle cx={0} cy={0} r={2} fill="#FFFFFF" opacity={0.65} />
+          </Svg>
+        );
+      case 'circle':
+      default:
+        return (
+          <Svg width={20} height={20} viewBox="-10 -10 20 20">
+            <Circle cx={0} cy={0} r={7.8} fill={color} />
+            <Circle cx={-1.5} cy={-1.5} r={1.8} fill="#FFFFFF" opacity={0.65} />
+          </Svg>
+        );
+    }
   };
 
   const handleSelectTheme = (newThemeId: string) => {
@@ -126,6 +194,8 @@ export default function SettingsScreen() {
         p1LineColor,
         p2DotColor,
         p2LineColor,
+        p1DotShape,
+        p2DotShape,
       },
     });
   };
@@ -441,6 +511,86 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Player Dot Shapes */}
+        <View style={[styles.section, isShortScreen && { marginBottom: 14 }]}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
+            Player Dot Shapes
+          </Text>
+          <View style={[styles.colorCard, { backgroundColor: currentTheme.colors.cardBackground, borderColor: currentTheme.colors.border }]}>
+            
+            {/* Player 1 Shapes */}
+            <Text style={[styles.colorSectionHeader, { color: currentTheme.colors.accent }]}>Your Dot Shape (Player 1)</Text>
+            
+            <View style={styles.colorSubLabelRow}>
+              <Text style={[styles.colorSubLabel, { color: currentTheme.colors.textPrimary }]}>Active Shape</Text>
+              <Text style={[styles.colorSelectedValueText, { color: currentTheme.colors.textSecondary }]}>
+                {availableShapes.find((s) => s.id === p1DotShape)?.label || p1DotShape}
+              </Text>
+            </View>
+            <View style={styles.shapePreviewRow}>
+              {availableShapes.map((shapeItem) => {
+                const isSelected = p1DotShape === shapeItem.id;
+                return (
+                  <TouchableOpacity
+                    key={`p1shape_${shapeItem.id}`}
+                    style={[
+                      styles.shapeOptionCircle,
+                      { borderColor: isSelected ? currentTheme.colors.accent : 'rgba(255,255,255,0.1)' },
+                      isSelected && { backgroundColor: 'rgba(255,255,255,0.05)' }
+                    ]}
+                    onPress={() => setP1DotShape(shapeItem.id as any)}
+                    activeOpacity={0.8}
+                  >
+                    {renderShapePreview(shapeItem.id, p1DotColor)}
+                    {isSelected && (
+                      <View style={styles.shapeCheckOverlay}>
+                        <Text style={styles.shapeCheckMark}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 12 }} />
+
+            {/* Player 2 Shapes */}
+            <Text style={[styles.colorSectionHeader, { color: currentTheme.colors.p2Shades[0] }]}>Bot Dot Shape (Player 2)</Text>
+            
+            <View style={styles.colorSubLabelRow}>
+              <Text style={[styles.colorSubLabel, { color: currentTheme.colors.textPrimary }]}>Active Shape</Text>
+              <Text style={[styles.colorSelectedValueText, { color: currentTheme.colors.textSecondary }]}>
+                {availableShapes.find((s) => s.id === p2DotShape)?.label || p2DotShape}
+              </Text>
+            </View>
+            <View style={styles.shapePreviewRow}>
+              {availableShapes.map((shapeItem) => {
+                const isSelected = p2DotShape === shapeItem.id;
+                return (
+                  <TouchableOpacity
+                    key={`p2shape_${shapeItem.id}`}
+                    style={[
+                      styles.shapeOptionCircle,
+                      { borderColor: isSelected ? currentTheme.colors.p2Shades[0] : 'rgba(255,255,255,0.1)' },
+                      isSelected && { backgroundColor: 'rgba(255,255,255,0.05)' }
+                    ]}
+                    onPress={() => setP2DotShape(shapeItem.id as any)}
+                    activeOpacity={0.8}
+                  >
+                    {renderShapePreview(shapeItem.id, p2DotColor)}
+                    {isSelected && (
+                      <View style={styles.shapeCheckOverlay}>
+                        <Text style={styles.shapeCheckMark}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+          </View>
+        </View>
+
         {/* Custom Line Configurations */}
         <View style={[styles.section, isShortScreen && { marginBottom: 14 }]}>
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
@@ -694,6 +844,40 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.1)',
+  },
+  shapePreviewRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginVertical: 6,
+  },
+  shapeOptionCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  shapeCheckOverlay: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#00FF66',
+    borderRadius: 8,
+    width: 15,
+    height: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#020617',
+  },
+  shapeCheckMark: {
+    color: '#020617',
+    fontSize: 9,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   warningBanner: {
     borderWidth: 1,
