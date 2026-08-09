@@ -7,13 +7,16 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES, KILL_EFFECTS } from '../constants/theme';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ difficulty?: string; themeId?: string; killEffect?: string }>();
+  const insets = useSafeAreaInsets();
 
   const difficulties: { id: 'easy' | 'medium' | 'hard'; label: string; desc: string }[] = [
     { id: 'easy', label: 'Easy', desc: 'Predictable paths. Great for training.' },
@@ -42,9 +45,14 @@ export default function SettingsScreen() {
     });
   };
 
+  const isThreeButtonNav = insets.bottom >= 30;
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: currentTheme.colors.background }]}>
+    <View style={[styles.safeArea, { backgroundColor: currentTheme.colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={currentTheme.colors.background} />
+      
+      {/* Top Status Bar Spacer */}
+      <View style={{ height: insets.top, backgroundColor: currentTheme.colors.background }} />
 
       {/* Header Row */}
       <View style={[styles.header, { borderBottomColor: currentTheme.colors.border }]}>
@@ -63,7 +71,13 @@ export default function SettingsScreen() {
         <View style={{ width: 68 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { paddingBottom: isThreeButtonNav ? 24 : Math.max(insets.bottom, 16) }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Intelligence Level */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
@@ -212,7 +226,10 @@ export default function SettingsScreen() {
           <Text style={styles.applyButtonText}>Apply Configurations</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+      {Platform.OS === 'android' && isThreeButtonNav && (
+        <View style={{ height: insets.bottom, backgroundColor: '#000000', width: '100%' }} />
+      )}
+    </View>
   );
 }
 

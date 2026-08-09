@@ -7,8 +7,11 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePaperSession } from '../hooks/usePaperSession';
 import { GAME_THEMES, GameTheme } from '../constants/theme';
 import { GridCanvas } from '../components/canvas/GridCanvas';
@@ -19,6 +22,7 @@ import { PlayerStatusBar } from '../components/ui/PlayerStatusBar';
 export default function GameScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ difficulty?: string; themeId?: string; killEffect?: string }>();
+  const insets = useSafeAreaInsets();
   
   // Extract inputs or fallback to defaults
   const difficulty = (params.difficulty === 'easy' || params.difficulty === 'medium' || params.difficulty === 'hard')
@@ -94,8 +98,12 @@ export default function GameScreen() {
     }
   };
 
+  const isThreeButtonNav = insets.bottom >= 30;
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
+    <View style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
+      {/* Top Status Bar Spacer */}
+      <View style={{ height: insets.top, backgroundColor: themeColors.cardBackground }} />
       <StatusBar
         barStyle={activeTheme.dark ? 'light-content' : 'dark-content'}
         backgroundColor={themeColors.cardBackground}
@@ -137,7 +145,7 @@ export default function GameScreen() {
         />
 
         {/* Bottom panel container with a fixed height to prevent layout shifting/shaking */}
-        <View style={styles.bottomContainer}>
+        <View style={[styles.bottomContainer, { marginBottom: isThreeButtonNav ? 0 : Math.max(insets.bottom, 12) }]}>
           {activePlayer === 1 && !winner && (
             <View
               style={[
@@ -238,7 +246,10 @@ export default function GameScreen() {
           </Animated.View>
         </View>
       )}
-    </SafeAreaView>
+      {Platform.OS === 'android' && isThreeButtonNav && (
+        <View style={{ height: insets.bottom, backgroundColor: '#000000', width: '100%' }} />
+      )}
+    </View>
   );
 }
 
@@ -270,7 +281,7 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     width: '92%',
-    height: 90,
+    height: Dimensions.get('window').height < 750 ? 80 : 90,
     justifyContent: 'center',
     alignItems: 'center',
   },

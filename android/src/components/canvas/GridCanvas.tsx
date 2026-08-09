@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Circle, G, Rect } from 'react-native-svg';
 import { Dot, Direction, Point } from '../../types/game';
 import { GRID_CONFIG } from '../../constants/board';
@@ -34,7 +35,17 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   onGestureEnd,
   onGestureStart,
 }) => {
-  const cellSize = GRID_CONFIG.CELL_SIZE;
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+  // Compute available space (Header HUD: ~70, TokenPicker bottom: ~90, margins: ~60)
+  const maxBoardHeight = screenHeight - insets.top - insets.bottom - 70 - 90 - 60;
+  const maxBoardWidth = screenWidth - 32;
+
+  const cellWidthLimit = (maxBoardWidth - 40) / (GRID_CONFIG.COLS - 1);
+  const cellHeightLimit = (maxBoardHeight - 40) / (GRID_CONFIG.ROWS - 1);
+  const cellSize = Math.max(22, Math.min(GRID_CONFIG.CELL_SIZE, cellWidthLimit, cellHeightLimit));
+
   const offsetX = 20;
   const offsetY = 20;
 

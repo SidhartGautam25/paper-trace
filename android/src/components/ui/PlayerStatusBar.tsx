@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { TokenPool } from '../../types/game';
 
 interface PlayerStatusBarProps {
@@ -137,7 +137,7 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    padding: 16,
+    padding: Dimensions.get('window').height < 750 ? 10 : 16,
     borderBottomWidth: 1.5,
     elevation: 4,
   },
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Dimensions.get('window').height < 750 ? 4 : 8,
   },
   leftGroup: {
     flexDirection: 'row',
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   infoRow: {
-    marginBottom: 8,
+    marginBottom: Dimensions.get('window').height < 750 ? 4 : 8,
   },
   infoText: {
     fontSize: 13,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   opponentTokensRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: Dimensions.get('window').height < 750 ? 4 : 6,
   },
   opponentTokensLabel: {
     fontSize: 10,

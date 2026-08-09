@@ -6,13 +6,16 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES } from '../constants/theme';
 import { getStats, resetStats, GameStats } from '../utils/stats';
 
 export default function HistoryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const theme = GAME_THEMES[0]; // Use default Cyber Neon aesthetic
   const colors = theme.colors;
 
@@ -29,9 +32,14 @@ export default function HistoryScreen() {
 
   const winRatio = stats.gamesPlayed > 0 ? Math.round((stats.wins / stats.gamesPlayed) * 100) : 0;
 
+  const isThreeButtonNav = insets.bottom >= 30;
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      
+      {/* Top Status Bar Spacer */}
+      <View style={{ height: insets.top, backgroundColor: colors.background }} />
 
       {/* Header HUD */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.cardBackground }]}>
@@ -46,7 +54,7 @@ export default function HistoryScreen() {
         <View style={{ width: 80 }} />
       </View>
 
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingBottom: isThreeButtonNav ? 20 : Math.max(insets.bottom, 16) }]}>
         {/* Stats Grid Card */}
         <View style={[styles.statsCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
           <Text style={[styles.statSubtitle, { color: colors.textSecondary }]}>Performance Overview</Text>
@@ -92,7 +100,10 @@ export default function HistoryScreen() {
           <Text style={styles.homeText}>Back to Home</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+      {Platform.OS === 'android' && isThreeButtonNav && (
+        <View style={{ height: insets.bottom, backgroundColor: '#000000', width: '100%' }} />
+      )}
+    </View>
   );
 }
 

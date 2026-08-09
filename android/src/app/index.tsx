@@ -7,14 +7,17 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Svg, { Circle, Line } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES, KILL_EFFECTS } from '../constants/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ difficulty?: string; themeId?: string; killEffect?: string }>();
+  const insets = useSafeAreaInsets();
 
   // Local state for configuration
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -59,11 +62,22 @@ export default function HomeScreen() {
     });
   };
 
-  return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: currentTheme.colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={currentTheme.colors.background} />
+  const isThreeButtonNav = insets.bottom >= 30;
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+  return (
+    <View style={[styles.safeArea, { backgroundColor: currentTheme.colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={currentTheme.colors.background} />
+      
+      {/* Top Status Bar Spacer */}
+      <View style={{ height: insets.top, backgroundColor: currentTheme.colors.background }} />
+
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { paddingBottom: isThreeButtonNav ? 24 : Math.max(insets.bottom, 16) }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Game Logo Header */}
         <View style={styles.logoContainer}>
           <Svg width={100} height={100} viewBox="0 0 80 80">
@@ -175,7 +189,10 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+      {Platform.OS === 'android' && isThreeButtonNav && (
+        <View style={{ height: insets.bottom, backgroundColor: '#000000', width: '100%' }} />
+      )}
+    </View>
   );
 }
 
@@ -185,21 +202,21 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingTop: 16,
+    paddingBottom: 16,
     flexGrow: 1,
     justifyContent: 'space-between',
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 24,
+    marginTop: 10,
+    marginBottom: 10,
   },
   appTitle: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '900',
     letterSpacing: 4,
-    marginTop: 16,
+    marginTop: 10,
     textAlign: 'center',
   },
   appSubtitle: {
@@ -214,7 +231,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1.5,
     padding: 20,
-    marginVertical: 16,
+    marginVertical: 12,
     elevation: 4,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -259,7 +276,7 @@ const styles = StyleSheet.create({
   playButtonContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 24,
+    marginVertical: 16,
   },
   playButton: {
     borderRadius: 20,
@@ -283,7 +300,7 @@ const styles = StyleSheet.create({
   utilityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 12,
     gap: 12,
   },
   utilityButton: {

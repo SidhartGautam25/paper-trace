@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { TokenPool } from '../../types/game';
 
 interface TokenPickerProps {
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   tokenCard: {
     flex: 1,
     marginHorizontal: 4,
-    paddingVertical: 10,
+    paddingVertical: Dimensions.get('window').height < 750 ? 6 : 10,
     borderRadius: 12,
     borderWidth: 1.5,
     alignItems: 'center',
@@ -110,9 +110,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   tokenValue: {
-    fontSize: 20,
+    fontSize: Dimensions.get('window').height < 750 ? 16 : 20,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: Dimensions.get('window').height < 750 ? 2 : 4,
   },
   badge: {
     paddingHorizontal: 6,

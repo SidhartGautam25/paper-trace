@@ -7,18 +7,26 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES } from '../constants/theme';
 
 export default function RulesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const theme = GAME_THEMES[0]; // Use default Cyber Neon aesthetic
   const colors = theme.colors;
 
+  const isThreeButtonNav = insets.bottom >= 30;
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      
+      {/* Top Status Bar Spacer */}
+      <View style={{ height: insets.top, backgroundColor: colors.background }} />
 
       {/* Header HUD */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.cardBackground }]}>
@@ -33,7 +41,13 @@ export default function RulesScreen() {
         <View style={{ width: 80 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { paddingBottom: isThreeButtonNav ? 24 : Math.max(insets.bottom, 16) }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Rules Card */}
         <View style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>1. Gameplay Objective</Text>
@@ -83,7 +97,10 @@ export default function RulesScreen() {
           <Text style={styles.backMenuText}>Back to Home</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+      {Platform.OS === 'android' && isThreeButtonNav && (
+        <View style={{ height: insets.bottom, backgroundColor: '#000000', width: '100%' }} />
+      )}
+    </View>
   );
 }
 
