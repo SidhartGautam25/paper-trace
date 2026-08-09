@@ -124,7 +124,8 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   });
 
   // Effect 4: Monster Chomper props
-  const topJawProps = useAnimatedProps(() => {
+  // Effect 4: Monster Chomper props
+  const topJawStyle = useAnimatedStyle(() => {
     const val = aliveVal.value;
     const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
     const ty = -28 * progress; // opens up to -28px (massive!)
@@ -135,12 +136,15 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      transform: `translate(${cx}, ${cy + ty})`,
+      transform: [
+        { translateX: cx },
+        { translateY: cy + ty }
+      ],
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
 
-  const bottomJawProps = useAnimatedProps(() => {
+  const bottomJawStyle = useAnimatedStyle(() => {
     const val = aliveVal.value;
     const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
     const ty = 28 * progress; // opens down to 28px
@@ -151,13 +155,16 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      transform: `translate(${cx}, ${cy + ty})`,
+      transform: [
+        { translateX: cx },
+        { translateY: cy + ty }
+      ],
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
 
   // Effect 5: Hammer Smash props
-  const hammerProps = useAnimatedProps(() => {
+  const hammerStyle = useAnimatedStyle(() => {
     const val = aliveVal.value;
     const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
     const rotation = -70 * progress;
@@ -171,7 +178,11 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      transform: `translate(${tx}, ${ty}) rotate(${rotation})`,
+      transform: [
+        { translateX: tx },
+        { translateY: ty },
+        { rotate: `${rotation}deg` }
+      ],
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
@@ -292,7 +303,8 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       {killEffect === 'monster' && (
         <G>
           {/* Monster Chomper Top Jaw */}
-          <AnimatedG animatedProps={topJawProps}>
+          {/* @ts-ignore */}
+          <AnimatedG style={topJawStyle}>
             <Path
               d="M -28,-4 Q 0,-30 28,-4 L 28,0 L 20,-8 L 12,0 L 0,-10 L -12,0 L -20,-8 L -28,0 Z"
               fill={killerColor}
@@ -307,7 +319,8 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
           </AnimatedG>
 
           {/* Monster Chomper Bottom Jaw */}
-          <AnimatedG animatedProps={bottomJawProps}>
+          {/* @ts-ignore */}
+          <AnimatedG style={bottomJawStyle}>
             <Path
               d="M -28,4 Q 0,30 28,4 L 28,0 L 20,8 L 12,0 L 0,10 L -12,0 L -20,8 L -28,0 Z"
               fill={killerColor}
@@ -321,7 +334,8 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       {killEffect === 'hammer' && (
         <G>
           {/* Smash Hammer */}
-          <AnimatedG animatedProps={hammerProps}>
+          {/* @ts-ignore */}
+          <AnimatedG style={hammerStyle}>
             <Rect
               x={-3.5}
               y={-87}

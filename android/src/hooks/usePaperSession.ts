@@ -28,12 +28,17 @@ export function usePaperSession(
   const [selectedDirection, setSelectedDirection] = useState<Direction | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
 
-  // Reset parameters when active player changes
+  // Reset parameters when active player changes & auto-select if only 1 dot alive
   useEffect(() => {
-    setSelectedDotId(null);
+    const aliveP1Dots = dots.filter((d) => d.player === 1 && d.isAlive);
+    if (activePlayer === 1 && aliveP1Dots.length === 1) {
+      setSelectedDotId(aliveP1Dots[0].id);
+    } else {
+      setSelectedDotId(null);
+    }
     setSelectedToken(null);
     setSelectedDirection(null);
-  }, [activePlayer]);
+  }, [activePlayer, dots]);
 
   // Player 1 Move Check Trigger
   useEffect(() => {

@@ -123,7 +123,6 @@ export default function GameScreen() {
         )}
 
         {/* Board Canvas */}
-        {/* Board Canvas */}
         <GridCanvas
           dots={dots}
           activePlayer={activePlayer}
@@ -137,49 +136,48 @@ export default function GameScreen() {
           onGestureEnd={handleExecute}
         />
 
-        {/* Play controls card */}
-        {activePlayer === 1 && !winner && (
-          <View
-            style={[
-              styles.controlCard,
-              {
-                backgroundColor: themeColors.cardBackground,
-                borderColor: themeColors.border,
-              },
-            ]}
-          >
-            <TokenPicker
-              tokens={player1Tokens}
-              selectedToken={selectedToken}
-              onSelectToken={selectToken}
-              themeColors={{
-                ...themeColors,
-                player1Ink: themeColors.p1Shades[0],
-                player1InkLight: themeColors.p1Shades[1] + '33',
-              }}
-              disabled={selectedDotId === null}
-            />
-          </View>
-        )}
+        {/* Bottom panel container with a fixed height to prevent layout shifting/shaking */}
+        <View style={styles.bottomContainer}>
+          {activePlayer === 1 && !winner && (
+            <View
+              style={[
+                styles.controlCard,
+                {
+                  backgroundColor: themeColors.cardBackground,
+                  borderColor: themeColors.border,
+                },
+              ]}
+            >
+              <TokenPicker
+                tokens={player1Tokens}
+                selectedToken={selectedToken}
+                onSelectToken={selectToken}
+                themeColors={{
+                  ...themeColors,
+                  player1Ink: themeColors.p1Shades[0],
+                  player1InkLight: themeColors.p1Shades[1] + '33',
+                }}
+                disabled={selectedDotId === null}
+              />
+            </View>
+          )}
 
-        {/* AI calculation card */}
-        {activePlayer === 2 && !winner && (
-          <View
-            style={[
-              styles.thinkingCard,
-              {
-                backgroundColor: themeColors.cardBackground,
-                borderColor: themeColors.border,
-              },
-            ]}
-          >
-            <Text style={[styles.thinkingText, { color: themeColors.textSecondary }]}>
-              🤖 Ink Slasher Bot is analyzing moves...
-            </Text>
-          </View>
-        )}
-
-
+          {activePlayer === 2 && !winner && (
+            <View
+              style={[
+                styles.thinkingCard,
+                {
+                  backgroundColor: themeColors.cardBackground,
+                  borderColor: themeColors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.thinkingText, { color: themeColors.textSecondary }]}>
+                🤖 Ink Slasher Bot is analyzing moves...
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Winner Overlay Popup */}
@@ -253,13 +251,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-evenly',
     width: '100%',
+    position: 'relative',
   },
   errorBanner: {
+    position: 'absolute',
+    top: 8,
+    zIndex: 999,
     borderWidth: 1,
     borderRadius: 8,
     padding: 10,
     width: '90%',
-    marginVertical: 10,
     alignItems: 'center',
   },
   errorText: {
@@ -267,21 +268,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  controlCard: {
+  bottomContainer: {
     width: '92%',
+    height: 90,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  controlCard: {
+    width: '100%',
+    height: '100%',
     borderRadius: 16,
     borderWidth: 1.5,
     paddingVertical: 4,
-    marginVertical: 4,
     alignItems: 'center',
+    justifyContent: 'center',
     elevation: 4,
   },
   thinkingCard: {
-    width: '92%',
+    width: '100%',
+    height: '100%',
     borderRadius: 16,
     borderWidth: 1.5,
     padding: 12,
-    marginVertical: 4,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 3,

@@ -92,14 +92,14 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const onTouchStartLocal = (e: any) => {
     const touch = e.nativeEvent.touches?.[0];
     if (touch) {
-      handleStart(touch.clientX, touch.clientY);
+      handleStart(touch.pageX, touch.pageY);
     }
   };
 
   const onTouchMoveLocal = (e: any) => {
     const touch = e.nativeEvent.touches?.[0];
     if (touch) {
-      handleMove(touch.clientX, touch.clientY);
+      handleMove(touch.pageX, touch.pageY);
     }
   };
 

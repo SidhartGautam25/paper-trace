@@ -17,7 +17,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.sidharth_25.papertrace"
     },
     "web": {
       "output": "static",
@@ -39,7 +40,10 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "cb4da472-1efd-4e46-bcd3-1d8368127002"
+      }
     }
   }
 }
