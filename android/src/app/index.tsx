@@ -16,22 +16,65 @@ import { GAME_THEMES, KILL_EFFECTS } from '../constants/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ difficulty?: string; themeId?: string; killEffect?: string }>();
+  const params = useLocalSearchParams<{
+    difficulty?: string;
+    themeId?: string;
+    killEffect?: string;
+    lines?: string;
+    p1DotColor?: string;
+    p1LineColor?: string;
+    p2DotColor?: string;
+    p2LineColor?: string;
+  }>();
   const insets = useSafeAreaInsets();
 
   // Local state for configuration
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [selectedThemeId, setSelectedThemeId] = useState<string>('cyber-neon');
-  const [selectedKillEffect, setSelectedKillEffect] = useState<'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer'>('collapse');
+  const [selectedKillEffect, setSelectedKillEffect] = useState<'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer' | 'burn' | 'firecracker'>('collapse');
+  const [selectedLines, setSelectedLines] = useState<string>('solid,dotted,glow');
+
+  const currentTheme = GAME_THEMES.find((t) => t.id === selectedThemeId) || GAME_THEMES[0];
+
+  const getThemeDefaultColors = (themeId: string) => {
+    switch (themeId) {
+      case 'emerald-gold':
+        return { p1: '#00FF66', p2: '#FFB900' };
+      case 'steel-ember':
+        return { p1: '#00F2FF', p2: '#FF2A2A' };
+      case 'cosmic-nebula':
+        return { p1: '#9B51E0', p2: '#FE53BB' };
+      case 'cyber-neon':
+      default:
+        return { p1: '#00F2FF', p2: '#FE53BB' };
+    }
+  };
+
+  const [p1DotColor, setP1DotColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p1);
+  const [p1LineColor, setP1LineColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p1);
+  const [p2DotColor, setP2DotColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p2);
+  const [p2LineColor, setP2LineColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p2);
 
   // Synchronize state with route params when coming back from Settings
   useEffect(() => {
     if (params.difficulty) setSelectedDifficulty(params.difficulty as any);
-    if (params.themeId) setSelectedThemeId(params.themeId);
+    if (params.themeId) {
+      setSelectedThemeId(params.themeId);
+      const defaults = getThemeDefaultColors(params.themeId);
+      setP1DotColor(params.p1DotColor || defaults.p1);
+      setP1LineColor(params.p1LineColor || defaults.p1);
+      setP2DotColor(params.p2DotColor || defaults.p2);
+      setP2LineColor(params.p2LineColor || defaults.p2);
+    } else {
+      if (params.p1DotColor) setP1DotColor(params.p1DotColor);
+      if (params.p1LineColor) setP1LineColor(params.p1LineColor);
+      if (params.p2DotColor) setP2DotColor(params.p2DotColor);
+      if (params.p2LineColor) setP2LineColor(params.p2LineColor);
+    }
     if (params.killEffect) setSelectedKillEffect(params.killEffect as any);
-  }, [params.difficulty, params.themeId, params.killEffect]);
+    if (params.lines) setSelectedLines(params.lines);
+  }, [params.difficulty, params.themeId, params.killEffect, params.lines, params.p1DotColor, params.p1LineColor, params.p2DotColor, params.p2LineColor]);
 
-  const currentTheme = GAME_THEMES.find((t) => t.id === selectedThemeId) || GAME_THEMES[0];
   const currentEffect = KILL_EFFECTS.find((e) => e.id === selectedKillEffect) || KILL_EFFECTS[0];
 
   const difficultyLabels = {
@@ -47,6 +90,11 @@ export default function HomeScreen() {
         difficulty: selectedDifficulty,
         themeId: selectedThemeId,
         killEffect: selectedKillEffect,
+        lines: selectedLines,
+        p1DotColor,
+        p1LineColor,
+        p2DotColor,
+        p2LineColor,
       },
     });
   };
@@ -58,6 +106,11 @@ export default function HomeScreen() {
         difficulty: selectedDifficulty,
         themeId: selectedThemeId,
         killEffect: selectedKillEffect,
+        lines: selectedLines,
+        p1DotColor,
+        p1LineColor,
+        p2DotColor,
+        p2LineColor,
       },
     });
   };

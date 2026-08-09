@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +34,7 @@ export default function HistoryScreen() {
   const winRatio = stats.gamesPlayed > 0 ? Math.round((stats.wins / stats.gamesPlayed) * 100) : 0;
 
   const isThreeButtonNav = insets.bottom >= 30;
+  const isShortScreen = Dimensions.get('window').height < 750;
 
   return (
     <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -115,14 +117,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: Dimensions.get('window').height < 750 ? 10 : 16,
     borderBottomWidth: 1.5,
   },
   backButton: {
     borderWidth: 1.5,
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: Dimensions.get('window').height < 750 ? 12 : 16,
+    paddingVertical: Dimensions.get('window').height < 750 ? 6 : 8,
   },
   backText: {
     fontSize: 12,
@@ -137,7 +139,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: Dimensions.get('window').height < 750 ? 12 : 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -145,8 +147,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 24,
     borderWidth: 1.5,
-    padding: 24,
-    marginBottom: 20,
+    padding: Dimensions.get('window').height < 750 ? 16 : 24,
+    marginBottom: Dimensions.get('window').height < 750 ? 12 : 20,
     alignItems: 'center',
   },
   statSubtitle: {
@@ -154,20 +156,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    marginBottom: 24,
+    marginBottom: Dimensions.get('window').height < 750 ? 12 : 24,
   },
   statGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     justifyContent: 'space-evenly',
-    marginBottom: 20,
+    marginBottom: Dimensions.get('window').height < 750 ? 12 : 20,
   },
   statItem: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 40,
+    fontSize: Dimensions.get('window').height < 750 ? 28 : 40,
     fontWeight: '900',
   },
   statLabel: {
@@ -177,18 +179,18 @@ const styles = StyleSheet.create({
   },
   divider: {
     width: 1.5,
-    height: 48,
+    height: Dimensions.get('window').height < 750 ? 36 : 48,
   },
   horizontalDivider: {
     width: '100%',
     height: 1,
-    marginVertical: 16,
+    marginVertical: Dimensions.get('window').height < 750 ? 10 : 16,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    marginVertical: 8,
+    marginVertical: Dimensions.get('window').height < 750 ? 4 : 8,
   },
   detailLabel: {
     fontSize: 14,
@@ -200,12 +202,12 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     width: '100%',
-    paddingVertical: 14,
+    paddingVertical: Dimensions.get('window').height < 750 ? 10 : 14,
     borderRadius: 12,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: Dimensions.get('window').height < 750 ? 8 : 12,
   },
   resetText: {
     color: '#EF4444',
@@ -215,7 +217,7 @@ const styles = StyleSheet.create({
   },
   homeButton: {
     width: '100%',
-    paddingVertical: 16,
+    paddingVertical: Dimensions.get('window').height < 750 ? 12 : 16,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

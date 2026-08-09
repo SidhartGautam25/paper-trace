@@ -20,6 +20,13 @@ interface GridCanvasProps {
   onSelectDirection: (dir: Direction) => void;
   onGestureEnd: () => void;
   onGestureStart?: () => void;
+  p1DotColor: string;
+  p1LineColor: string;
+  p2DotColor: string;
+  p2LineColor: string;
+  selectedLines: string[];
+  maxHeight: number;
+  maxWidth: number;
 }
 
 export const GridCanvas: React.FC<GridCanvasProps> = ({
@@ -34,13 +41,19 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   onSelectDirection,
   onGestureEnd,
   onGestureStart,
+  p1DotColor,
+  p1LineColor,
+  p2DotColor,
+  p2LineColor,
+  selectedLines,
+  maxHeight,
+  maxWidth,
 }) => {
   const insets = useSafeAreaInsets();
-  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-  // Compute available space (Header HUD: ~70, TokenPicker bottom: ~90, margins: ~60)
-  const maxBoardHeight = screenHeight - insets.top - insets.bottom - 70 - 90 - 60;
-  const maxBoardWidth = screenWidth - 32;
+  // Compute available space dynamically from flex measured dimensions
+  const maxBoardHeight = maxHeight - 16;
+  const maxBoardWidth = maxWidth - 16;
 
   const cellWidthLimit = (maxBoardWidth - 40) / (GRID_CONFIG.COLS - 1);
   const cellHeightLimit = (maxBoardHeight - 40) / (GRID_CONFIG.ROWS - 1);
@@ -134,6 +147,24 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 
   // Retrieve the custom shade for a specific dot
   const getDotColor = (dotId: string, player: 1 | 2): string => {
+    if (player === 1) {
+      if (p1DotColor) return p1DotColor;
+    } else {
+      if (p2DotColor) return p2DotColor;
+    }
+    const shades = player === 1 ? themeColors.p1Shades : themeColors.p2Shades;
+    if (dotId.endsWith('_1')) return shades[0];
+    if (dotId.endsWith('_2')) return shades[1];
+    if (dotId.endsWith('_3')) return shades[2];
+    return shades[0];
+  };
+
+  const getLineColor = (dotId: string, player: 1 | 2): string => {
+    if (player === 1) {
+      if (p1LineColor) return p1LineColor;
+    } else {
+      if (p2LineColor) return p2LineColor;
+    }
     const shades = player === 1 ? themeColors.p1Shades : themeColors.p2Shades;
     if (dotId.endsWith('_1')) return shades[0];
     if (dotId.endsWith('_2')) return shades[1];
@@ -234,7 +265,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 
     const startPos = movingDot.currentPos;
     const directions: Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    const baseColor = getDotColor(selectedDotId, 1);
+    const baseColor = getLineColor(selectedDotId, 1);
 
     return (
       <G opacity={0.45}>
@@ -292,7 +323,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const inBounds = isWithinBounds(endPos);
     
     // Preview uses the moving dot's primary shade or red alert if out-of-bounds
-    const baseColor = getDotColor(selectedDotId, 1);
+    const baseColor = getLineColor(selectedDotId, 1);
     const strokeColor = inBounds ? baseColor : '#EF4444';
     const dotNumber = selectedDotId.split('_')[1] || '1';
 
@@ -393,17 +424,18 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         {/* Renders line trails using respective dot shades and line style settings */}
         {dots.map((dot) => {
           if (!dot) return null;
-          const color = getDotColor(dot.id, dot.player);
+          const lineColor = getLineColor(dot.id, dot.player);
           return dot.history.map((segment, idx) => (
             <LineSegment
               key={segment.id}
               segment={segment}
-              color={color}
+              color={lineColor}
               index={idx}
               historyLength={dot.history.length}
               cellSize={cellSize}
               offsetX={offsetX}
               offsetY={offsetY}
+              selectedLines={selectedLines}
             />
           ));
         })}

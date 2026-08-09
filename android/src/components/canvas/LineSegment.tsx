@@ -10,6 +10,7 @@ interface LineSegmentProps {
   cellSize: number;
   offsetX: number;
   offsetY: number;
+  selectedLines: string[];
 }
 
 export const LineSegment: React.FC<LineSegmentProps> = ({
@@ -20,6 +21,7 @@ export const LineSegment: React.FC<LineSegmentProps> = ({
   cellSize,
   offsetX,
   offsetY,
+  selectedLines,
 }) => {
   const x1 = segment.start.c * cellSize + offsetX;
   const y1 = segment.start.r * cellSize + offsetY;
@@ -40,63 +42,127 @@ export const LineSegment: React.FC<LineSegmentProps> = ({
     baseOpacity = 0.65; // Middle segment
   }
 
-  // Styles based on Dot Number
-  if (dotNumber === '1') {
-    // Dot 1: Simple plain solid line
-    return (
-      <Line
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-        stroke={color}
-        strokeWidth={3}
-        strokeOpacity={baseOpacity}
-        strokeLinecap="round"
-      />
-    );
-  } else if (dotNumber === '2') {
-    // Dot 2: Dotted line movement
-    return (
-      <Line
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-        stroke={color}
-        strokeWidth={3.5}
-        strokeOpacity={baseOpacity}
-        strokeLinecap="round"
-        strokeDasharray="1, 5" // Circular dots spacing
-      />
-    );
-  } else {
-    // Dot 3: Glowing neon-style dual line (other effect)
-    return (
-      <G>
-        {/* Outer wider glow line with low opacity */}
+  // Get active line style based on dot number index
+  const dotIdx = Math.max(0, Math.min(2, parseInt(dotNumber) - 1));
+  const activeStyle = selectedLines[dotIdx] || 'solid';
+
+  switch (activeStyle) {
+    case 'dotted':
+      // Dotted spacing trail
+      return (
         <Line
           x1={x1}
           y1={y1}
           x2={x2}
           y2={y2}
           stroke={color}
-          strokeWidth={9}
-          strokeOpacity={baseOpacity * 0.25}
+          strokeWidth={3.5}
+          strokeOpacity={baseOpacity}
           strokeLinecap="round"
+          strokeDasharray="1, 5"
         />
-        {/* Inner bright core line */}
+      );
+
+    case 'glow':
+      // Glowing neon-style dual line
+      return (
+        <G>
+          <Line
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={color}
+            strokeWidth={9}
+            strokeOpacity={baseOpacity * 0.25}
+            strokeLinecap="round"
+          />
+          <Line
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={color}
+            strokeWidth={2.5}
+            strokeOpacity={baseOpacity}
+            strokeLinecap="round"
+          />
+        </G>
+      );
+
+    case 'dashed':
+      // Dashed track segment
+      return (
         <Line
           x1={x1}
           y1={y1}
           x2={x2}
           y2={y2}
           stroke={color}
-          strokeWidth={2.5}
+          strokeWidth={3}
+          strokeOpacity={baseOpacity}
+          strokeLinecap="round"
+          strokeDasharray="6, 4"
+        />
+      );
+
+    case 'dashdot':
+      // Alternating dash and dot pulses
+      return (
+        <Line
+          x1={x1}
+          y1={y1}
+          x2={x2}
+          y2={y2}
+          stroke={color}
+          strokeWidth={3}
+          strokeOpacity={baseOpacity}
+          strokeLinecap="round"
+          strokeDasharray="8, 4, 1, 4"
+        />
+      );
+
+    case 'outline':
+      // Double rail hollow track (draws thick background underneath, colored borders, and a thin center stripe of background color)
+      return (
+        <G>
+          <Line
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={color}
+            strokeWidth={4.5}
+            strokeOpacity={baseOpacity}
+            strokeLinecap="round"
+          />
+          <Line
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke="#090D16" // Dark core background color
+            strokeWidth={2.0}
+            strokeOpacity={baseOpacity}
+            strokeLinecap="round"
+          />
+        </G>
+      );
+
+    case 'solid':
+    default:
+      // Simple plain solid line
+      return (
+        <Line
+          x1={x1}
+          y1={y1}
+          x2={x2}
+          y2={y2}
+          stroke={color}
+          strokeWidth={3}
           strokeOpacity={baseOpacity}
           strokeLinecap="round"
         />
-      </G>
-    );
+      );
   }
 };

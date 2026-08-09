@@ -8,6 +8,7 @@ import {
   ScrollView,
   StatusBar,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +16,16 @@ import { GAME_THEMES, KILL_EFFECTS } from '../constants/theme';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ difficulty?: string; themeId?: string; killEffect?: string }>();
+  const params = useLocalSearchParams<{
+    difficulty?: string;
+    themeId?: string;
+    killEffect?: string;
+    lines?: string;
+    p1DotColor?: string;
+    p1LineColor?: string;
+    p2DotColor?: string;
+    p2LineColor?: string;
+  }>();
   const insets = useSafeAreaInsets();
 
   const difficulties: { id: 'easy' | 'medium' | 'hard'; label: string; desc: string }[] = [
@@ -34,18 +44,94 @@ export default function SettingsScreen() {
 
   const currentTheme = GAME_THEMES.find((t) => t.id === themeId) || GAME_THEMES[0];
 
+  const getThemeDefaultColors = (themeId: string) => {
+    switch (themeId) {
+      case 'emerald-gold':
+        return { p1: '#00FF66', p2: '#FFB900' };
+      case 'steel-ember':
+        return { p1: '#00F2FF', p2: '#FF2A2A' };
+      case 'cosmic-nebula':
+        return { p1: '#9B51E0', p2: '#FE53BB' };
+      case 'cyber-neon':
+      default:
+        return { p1: '#00F2FF', p2: '#FE53BB' };
+    }
+  };
+
+  // Custom Colors States
+  const [p1DotColor, setP1DotColor] = useState<string>(() => {
+    if (params.p1DotColor) return params.p1DotColor;
+    return getThemeDefaultColors(params.themeId || 'cyber-neon').p1;
+  });
+  const [p1LineColor, setP1LineColor] = useState<string>(() => {
+    if (params.p1LineColor) return params.p1LineColor;
+    return getThemeDefaultColors(params.themeId || 'cyber-neon').p1;
+  });
+  const [p2DotColor, setP2DotColor] = useState<string>(() => {
+    if (params.p2DotColor) return params.p2DotColor;
+    return getThemeDefaultColors(params.themeId || 'cyber-neon').p2;
+  });
+  const [p2LineColor, setP2LineColor] = useState<string>(() => {
+    if (params.p2LineColor) return params.p2LineColor;
+    return getThemeDefaultColors(params.themeId || 'cyber-neon').p2;
+  });
+
+  // Line Style configurations
+  const [selectedLines, setSelectedLines] = useState<string[]>(
+    params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow']
+  );
+
+  const COLOR_PALETTE = [
+    { value: '#00F2FF', label: 'Cyan' },
+    { value: '#FE53BB', label: 'Pink' },
+    { value: '#00FF66', label: 'Green' },
+    { value: '#FFB900', label: 'Gold' },
+    { value: '#FF2A2A', label: 'Red' },
+    { value: '#9B51E0', label: 'Purple' },
+  ];
+
+  const availableLineStyles = [
+    { id: 'solid', label: 'Solid Vector', desc: 'Continuous solid neon track' },
+    { id: 'dotted', label: 'Micro Dot', desc: 'Dotted spacing trail' },
+    { id: 'glow', label: 'Neon Aura', desc: 'Dual-layered outer glow' },
+    { id: 'dashed', label: 'Dash Track', desc: 'Segmented dashes guide' },
+    { id: 'dashdot', label: 'Pulse Segment', desc: 'Alternating dash and dot pulses' },
+    { id: 'outline', label: 'Double Rail', desc: 'Parallel side rails outline' },
+  ];
+
+  const getColorLabel = (currentValue: string) => {
+    const matched = COLOR_PALETTE.find(c => c.value.toLowerCase() === currentValue.toLowerCase());
+    return matched ? matched.label : 'Custom';
+  };
+
+  const handleSelectTheme = (newThemeId: string) => {
+    setThemeId(newThemeId);
+    const defaults = getThemeDefaultColors(newThemeId);
+    setP1DotColor(defaults.p1);
+    setP1LineColor(defaults.p1);
+    setP2DotColor(defaults.p2);
+    setP2LineColor(defaults.p2);
+  };
+
   const handleBack = () => {
+    if (selectedLines.length !== 3) return;
     router.replace({
       pathname: '/',
       params: {
         difficulty,
         themeId,
         killEffect,
+        lines: selectedLines.join(','),
+        p1DotColor,
+        p1LineColor,
+        p2DotColor,
+        p2LineColor,
       },
     });
   };
 
   const isThreeButtonNav = insets.bottom >= 30;
+  const isShortScreen = Dimensions.get('window').height < 750;
 
   return (
     <View style={[styles.safeArea, { backgroundColor: currentTheme.colors.background }]}>
@@ -137,7 +223,7 @@ export default function SettingsScreen() {
                     borderColor: isSelected ? currentTheme.colors.accent : currentTheme.colors.border,
                   },
                 ]}
-                onPress={() => setThemeId(theme.id)}
+                onPress={() => handleSelectTheme(theme.id)}
                 activeOpacity={0.7}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -217,13 +303,220 @@ export default function SettingsScreen() {
           })}
         </View>
 
+        {/* Custom Color Configurations */}
+        <View style={[styles.section, isShortScreen && { marginBottom: 14 }]}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
+            Color Adaptations
+          </Text>
+          <View style={[styles.colorCard, { backgroundColor: currentTheme.colors.cardBackground, borderColor: currentTheme.colors.border }]}>
+            
+            {/* Player 1 Colors */}
+            <Text style={[styles.colorSectionHeader, { color: currentTheme.colors.accent }]}>Your Assets (Player 1)</Text>
+            
+            <View style={styles.colorSubLabelRow}>
+              <Text style={[styles.colorSubLabel, { color: currentTheme.colors.textPrimary }]}>Dot Color</Text>
+              <Text style={[styles.colorSelectedValueText, { color: currentTheme.colors.textSecondary }]}>
+                {getColorLabel(p1DotColor)}
+              </Text>
+            </View>
+            <View style={styles.paletteRow}>
+              {COLOR_PALETTE.map((color) => {
+                const isSelected = p1DotColor.toLowerCase() === color.value.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={`p1dot_${color.value}`}
+                    style={[
+                      styles.colorCircle,
+                      { backgroundColor: color.value },
+                      isSelected && { borderColor: '#FFFFFF', borderWidth: 2.5 }
+                    ]}
+                    onPress={() => setP1DotColor(color.value)}
+                    activeOpacity={0.8}
+                  >
+                    {isSelected && (
+                      <View style={styles.colorCheckContainer}>
+                        <Text style={styles.colorCheckMark}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.colorSubLabelRow}>
+              <Text style={[styles.colorSubLabel, { color: currentTheme.colors.textPrimary }]}>Line Color</Text>
+              <Text style={[styles.colorSelectedValueText, { color: currentTheme.colors.textSecondary }]}>
+                {getColorLabel(p1LineColor)}
+              </Text>
+            </View>
+            <View style={styles.paletteRow}>
+              {COLOR_PALETTE.map((color) => {
+                const isSelected = p1LineColor.toLowerCase() === color.value.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={`p1line_${color.value}`}
+                    style={[
+                      styles.colorCircle,
+                      { backgroundColor: color.value },
+                      isSelected && { borderColor: '#FFFFFF', borderWidth: 2.5 }
+                    ]}
+                    onPress={() => setP1LineColor(color.value)}
+                    activeOpacity={0.8}
+                  >
+                    {isSelected && (
+                      <View style={styles.colorCheckContainer}>
+                        <Text style={styles.colorCheckMark}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 12 }} />
+
+            {/* Player 2 Colors */}
+            <Text style={[styles.colorSectionHeader, { color: currentTheme.colors.p2Shades[0] }]}>Bot Assets (Player 2)</Text>
+            
+            <View style={styles.colorSubLabelRow}>
+              <Text style={[styles.colorSubLabel, { color: currentTheme.colors.textPrimary }]}>Dot Color</Text>
+              <Text style={[styles.colorSelectedValueText, { color: currentTheme.colors.textSecondary }]}>
+                {getColorLabel(p2DotColor)}
+              </Text>
+            </View>
+            <View style={styles.paletteRow}>
+              {COLOR_PALETTE.map((color) => {
+                const isSelected = p2DotColor.toLowerCase() === color.value.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={`p2dot_${color.value}`}
+                    style={[
+                      styles.colorCircle,
+                      { backgroundColor: color.value },
+                      isSelected && { borderColor: '#FFFFFF', borderWidth: 2.5 }
+                    ]}
+                    onPress={() => setP2DotColor(color.value)}
+                    activeOpacity={0.8}
+                  >
+                    {isSelected && (
+                      <View style={styles.colorCheckContainer}>
+                        <Text style={styles.colorCheckMark}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.colorSubLabelRow}>
+              <Text style={[styles.colorSubLabel, { color: currentTheme.colors.textPrimary }]}>Line Color</Text>
+              <Text style={[styles.colorSelectedValueText, { color: currentTheme.colors.textSecondary }]}>
+                {getColorLabel(p2LineColor)}
+              </Text>
+            </View>
+            <View style={styles.paletteRow}>
+              {COLOR_PALETTE.map((color) => {
+                const isSelected = p2LineColor.toLowerCase() === color.value.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={`p2line_${color.value}`}
+                    style={[
+                      styles.colorCircle,
+                      { backgroundColor: color.value },
+                      isSelected && { borderColor: '#FFFFFF', borderWidth: 2.5 }
+                    ]}
+                    onPress={() => setP2LineColor(color.value)}
+                    activeOpacity={0.8}
+                  >
+                    {isSelected && (
+                      <View style={styles.colorCheckContainer}>
+                        <Text style={styles.colorCheckMark}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+          </View>
+        </View>
+
+        {/* Custom Line Configurations */}
+        <View style={[styles.section, isShortScreen && { marginBottom: 14 }]}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
+            Line Segment Configurations (Select Exactly 3)
+          </Text>
+          
+          {selectedLines.length !== 3 && (
+            <View style={[styles.warningBanner, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: '#EF4444' }]}>
+              <Text style={[styles.warningText, { color: '#EF4444' }]}>
+                ⚠️ Select exactly 3 styles to apply configurations. (Selected: {selectedLines.length}/3)
+              </Text>
+            </View>
+          )}
+
+          {availableLineStyles.map((style) => {
+            const isChecked = selectedLines.includes(style.id);
+            return (
+              <TouchableOpacity
+                key={style.id}
+                style={[
+                  styles.optionCard,
+                  isShortScreen && { padding: 10, marginBottom: 8 },
+                  {
+                    backgroundColor: currentTheme.colors.cardBackground,
+                    borderColor: isChecked ? currentTheme.colors.accent : currentTheme.colors.border,
+                  },
+                ]}
+                onPress={() => {
+                  if (isChecked) {
+                    setSelectedLines(selectedLines.filter((l) => l !== style.id));
+                  } else {
+                    setSelectedLines([...selectedLines, style.id]);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.cardHeader}>
+                  <View
+                    style={[
+                      styles.checkbox,
+                      {
+                        borderColor: isChecked ? currentTheme.colors.accent : currentTheme.colors.textSecondary,
+                        backgroundColor: isChecked ? currentTheme.colors.accent : 'transparent',
+                      },
+                    ]}
+                  >
+                    {isChecked && <Text style={styles.checkboxCheck}>✓</Text>}
+                  </View>
+                  <Text style={[styles.cardTitle, { color: currentTheme.colors.textPrimary }]}>
+                    {style.label}
+                  </Text>
+                </View>
+                <Text style={[styles.cardDesc, { color: currentTheme.colors.textSecondary }]}>
+                  {style.desc}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* Apply Settings Button */}
         <TouchableOpacity
-          style={[styles.applyButton, { backgroundColor: currentTheme.colors.accent }]}
+          style={[
+            styles.applyButton,
+            { backgroundColor: selectedLines.length === 3 ? currentTheme.colors.accent : 'rgba(255, 255, 255, 0.05)' },
+          ]}
+          disabled={selectedLines.length !== 3}
           onPress={handleBack}
           activeOpacity={0.8}
         >
-          <Text style={styles.applyButtonText}>Apply Configurations</Text>
+          <Text style={[
+            styles.applyButtonText,
+            { color: selectedLines.length === 3 ? '#000000' : 'rgba(255, 255, 255, 0.2)' }
+          ]}>
+            Apply Configurations
+          </Text>
         </TouchableOpacity>
       </ScrollView>
       {Platform.OS === 'android' && isThreeButtonNav && (
@@ -349,9 +642,83 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   applyButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  colorCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 16,
+  },
+  colorSectionHeader: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  colorSubLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  colorSubLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  colorSelectedValueText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  colorCheckContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorCheckMark: {
+    color: '#000000',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  paletteRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  colorCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  warningBanner: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  warningText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    marginRight: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxCheck: {
+    color: '#000000',
+    fontSize: 11,
+    fontWeight: '900',
   },
 });

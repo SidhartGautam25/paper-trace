@@ -21,7 +21,16 @@ import { PlayerStatusBar } from '../components/ui/PlayerStatusBar';
 
 export default function GameScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ difficulty?: string; themeId?: string; killEffect?: string }>();
+  const params = useLocalSearchParams<{
+    difficulty?: string;
+    themeId?: string;
+    killEffect?: string;
+    lines?: string;
+    p1DotColor?: string;
+    p1LineColor?: string;
+    p2DotColor?: string;
+    p2LineColor?: string;
+  }>();
   const insets = useSafeAreaInsets();
   
   // Extract inputs or fallback to defaults
@@ -36,6 +45,18 @@ export default function GameScreen() {
   // Find theme details
   const activeTheme = GAME_THEMES.find((t) => t.id === themeId) || GAME_THEMES[0];
   const themeColors = activeTheme.colors;
+
+  // Custom Colors
+  const p1DotColor = params.p1DotColor || themeColors.p1Shades[0];
+  const p1LineColor = params.p1LineColor || themeColors.p1Shades[0];
+  const p2DotColor = params.p2DotColor || themeColors.p2Shades[0];
+  const p2LineColor = params.p2LineColor || themeColors.p2Shades[0];
+
+  // Custom Lines
+  const selectedLines = params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow'];
+
+  // Layout Measurement state for percentage-wise dynamic allocation
+  const [boardLayout, setBoardLayout] = useState<{ width: number; height: number } | null>(null);
 
   // Initialize session
   const {
@@ -109,82 +130,106 @@ export default function GameScreen() {
         backgroundColor={themeColors.cardBackground}
       />
       
-      {/* Header HUD */}
-      <PlayerStatusBar
-        activePlayer={activePlayer}
-        winner={winner}
-        difficulty={difficulty}
-        isAiThinking={isAiThinking}
-        onReset={resetGame}
-        onBack={handleBack}
-        themeColors={themeColors}
-        player1Tokens={player1Tokens}
-        player2Tokens={player2Tokens}
-      />
+      <View style={styles.flexContainer}>
+        {/* Header HUD Section */}
+        <View style={styles.hudSection}>
+          <PlayerStatusBar
+            activePlayer={activePlayer}
+            winner={winner}
+            difficulty={difficulty}
+            isAiThinking={isAiThinking}
+            onReset={resetGame}
+            onBack={handleBack}
+            themeColors={{
+              ...themeColors,
+              p1Shades: [p1DotColor, p1LineColor, themeColors.p1Shades[1] || p1DotColor],
+              p2Shades: [p2DotColor, p2LineColor, themeColors.p2Shades[1] || p2DotColor],
+            }}
+            player1Tokens={player1Tokens}
+            player2Tokens={player2Tokens}
+          />
+        </View>
 
-      <View style={styles.mainContainer}>
-        {/* Error banner */}
-        {errorMsg && (
-          <View style={[styles.errorBanner, { borderColor: '#EF4444', backgroundColor: '#FEE2E2' }]}>
-            <Text style={styles.errorText}>⚠️ {errorMsg}</Text>
+        {/* Board Canvas Section with dynamic measurement */}
+        <View 
+          style={styles.boardSection}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            setBoardLayout({ width, height });
+          }}
+        >
+          {errorMsg && (
+            <View style={[styles.errorBanner, { borderColor: '#EF4444', backgroundColor: '#FEE2E2' }]}>
+              <Text style={styles.errorText}>⚠️ {errorMsg}</Text>
+            </View>
+          )}
+
+          {boardLayout && (
+            <GridCanvas
+              dots={dots}
+              activePlayer={activePlayer}
+              selectedDotId={selectedDotId}
+              selectedToken={selectedToken}
+              selectedDirection={selectedDirection}
+              onSelectDot={selectDot}
+              themeColors={themeColors}
+              killEffect={killEffect}
+              onSelectDirection={selectDirection}
+              onGestureEnd={handleExecute}
+              p1DotColor={p1DotColor}
+              p1LineColor={p1LineColor}
+              p2DotColor={p2DotColor}
+              p2LineColor={p2LineColor}
+              selectedLines={selectedLines}
+              maxHeight={boardLayout.height}
+              maxWidth={boardLayout.width}
+            />
+          )}
+        </View>
+
+        {/* Bottom Panel Section */}
+        <View style={styles.bottomSection}>
+          <View style={[styles.bottomContainer, { marginBottom: isThreeButtonNav ? 0 : Math.max(insets.bottom, 12) }]}>
+            {activePlayer === 1 && !winner && (
+              <View
+                style={[
+                  styles.controlCard,
+                  {
+                    backgroundColor: themeColors.cardBackground,
+                    borderColor: themeColors.border,
+                  },
+                ]}
+              >
+                <TokenPicker
+                  tokens={player1Tokens}
+                  selectedToken={selectedToken}
+                  onSelectToken={selectToken}
+                  themeColors={{
+                    ...themeColors,
+                    player1Ink: p1DotColor,
+                    player1InkLight: p1DotColor + '33',
+                  }}
+                  disabled={selectedDotId === null}
+                />
+              </View>
+            )}
+
+            {activePlayer === 2 && !winner && (
+              <View
+                style={[
+                  styles.thinkingCard,
+                  {
+                    backgroundColor: themeColors.cardBackground,
+                    borderColor: themeColors.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.thinkingText, { color: themeColors.textSecondary }]}>
+                  🤖 Ink Slasher Bot is analyzing moves...
+                </Text>
+              </View>
+            )}
           </View>
-        )}
-
-        {/* Board Canvas */}
-        <GridCanvas
-          dots={dots}
-          activePlayer={activePlayer}
-          selectedDotId={selectedDotId}
-          selectedToken={selectedToken}
-          selectedDirection={selectedDirection}
-          onSelectDot={selectDot}
-          themeColors={themeColors}
-          killEffect={killEffect}
-          onSelectDirection={selectDirection}
-          onGestureEnd={handleExecute}
-        />
-
-        {/* Bottom panel container with a fixed height to prevent layout shifting/shaking */}
-        <View style={[styles.bottomContainer, { marginBottom: isThreeButtonNav ? 0 : Math.max(insets.bottom, 12) }]}>
-          {activePlayer === 1 && !winner && (
-            <View
-              style={[
-                styles.controlCard,
-                {
-                  backgroundColor: themeColors.cardBackground,
-                  borderColor: themeColors.border,
-                },
-              ]}
-            >
-              <TokenPicker
-                tokens={player1Tokens}
-                selectedToken={selectedToken}
-                onSelectToken={selectToken}
-                themeColors={{
-                  ...themeColors,
-                  player1Ink: themeColors.p1Shades[0],
-                  player1InkLight: themeColors.p1Shades[1] + '33',
-                }}
-                disabled={selectedDotId === null}
-              />
-            </View>
-          )}
-
-          {activePlayer === 2 && !winner && (
-            <View
-              style={[
-                styles.thinkingCard,
-                {
-                  backgroundColor: themeColors.cardBackground,
-                  borderColor: themeColors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.thinkingText, { color: themeColors.textSecondary }]}>
-                🤖 Ink Slasher Bot is analyzing moves...
-              </Text>
-            </View>
-          )}
         </View>
       </View>
 
@@ -257,12 +302,26 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  mainContainer: {
+  flexContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
     width: '100%',
+  },
+  hudSection: {
+    width: '100%',
+    flexShrink: 0,
+  },
+  boardSection: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
+  },
+  bottomSection: {
+    width: '100%',
+    flexShrink: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorBanner: {
     position: 'absolute',

@@ -8,6 +8,7 @@ import {
   ScrollView,
   StatusBar,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +21,7 @@ export default function RulesScreen() {
   const colors = theme.colors;
 
   const isThreeButtonNav = insets.bottom >= 30;
+  const isShortScreen = Dimensions.get('window').height < 750;
 
   return (
     <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -112,14 +114,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: Dimensions.get('window').height < 750 ? 10 : 16,
     borderBottomWidth: 1.5,
   },
   backButton: {
     borderWidth: 1.5,
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: Dimensions.get('window').height < 750 ? 12 : 16,
+    paddingVertical: Dimensions.get('window').height < 750 ? 6 : 8,
   },
   backText: {
     fontSize: 12,
@@ -134,34 +136,34 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: Dimensions.get('window').height < 750 ? 10 : 20,
     alignItems: 'center',
   },
   card: {
     width: '100%',
     borderRadius: 20,
     borderWidth: 1.5,
-    padding: 20,
-    marginBottom: 20,
+    padding: Dimensions.get('window').height < 750 ? 12 : 20,
+    marginBottom: Dimensions.get('window').height < 750 ? 12 : 20,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: Dimensions.get('window').height < 750 ? 13 : 14,
     fontWeight: '800',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: Dimensions.get('window').height < 750 ? 10 : 16,
+    marginBottom: Dimensions.get('window').height < 750 ? 4 : 8,
   },
   bodyText: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: Dimensions.get('window').height < 750 ? 12 : 13,
+    lineHeight: Dimensions.get('window').height < 750 ? 18 : 20,
     fontWeight: '500',
   },
   formulaBox: {
-    marginTop: 16,
+    marginTop: Dimensions.get('window').height < 750 ? 10 : 16,
     borderRadius: 12,
     borderWidth: 1,
-    padding: 12,
+    padding: Dimensions.get('window').height < 750 ? 8 : 12,
   },
   formulaTitle: {
     fontSize: 12,
@@ -181,7 +183,7 @@ const styles = StyleSheet.create({
   },
   backMenuButton: {
     width: '100%',
-    paddingVertical: 16,
+    paddingVertical: Dimensions.get('window').height < 750 ? 12 : 16,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
