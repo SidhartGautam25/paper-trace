@@ -25,7 +25,7 @@ export default function SettingsScreen() {
     (params.difficulty as any) || 'medium'
   );
   const [themeId, setThemeId] = useState<string>(params.themeId || 'cyber-neon');
-  const [killEffect, setKillEffect] = useState<'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer'>(
+  const [killEffect, setKillEffect] = useState<'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer' | 'burn' | 'firecracker'>(
     (params.killEffect as any) || 'collapse'
   );
 
@@ -60,7 +60,7 @@ export default function SettingsScreen() {
         <Text style={[styles.headerTitle, { color: currentTheme.colors.textPrimary }]}>
           Configurations
         </Text>
-        <View style={{ width: 68 }} /> {/* Balancer */}
+        <View style={{ width: 68 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

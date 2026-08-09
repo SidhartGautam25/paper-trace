@@ -98,7 +98,7 @@ export const GAME_THEMES: GameTheme[] = [
 ];
 
 export interface KillEffectOption {
-  id: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer';
+  id: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer' | 'burn' | 'firecracker';
   name: string;
   description: string;
 }
@@ -128,5 +128,15 @@ export const KILL_EFFECTS: KillEffectOption[] = [
     id: 'hammer',
     name: 'Mjolnir Hammer Smash',
     description: 'Dot transforms into a hammer and smashes the enemy dot into pieces.',
+  },
+  {
+    id: 'burn',
+    name: 'Incinerating Flame',
+    description: 'Dot is consumed by rising, glowing neon flames and ashes.',
+  },
+  {
+    id: 'firecracker',
+    name: 'Firecracker Burst',
+    description: 'Dot explodes into a vibrant multi-colored spark shower.',
   },
 ];

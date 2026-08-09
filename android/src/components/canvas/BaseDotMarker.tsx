@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Circle, G, Path, Rect } from 'react-native-svg';
+import { Circle, G, Path, Rect, Line } from 'react-native-svg';
 import Animated, {
   useAnimatedProps,
   useAnimatedStyle,
@@ -22,7 +22,7 @@ interface BaseDotMarkerProps {
   cellSize: number;
   offsetX: number;
   offsetY: number;
-  killEffect: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer';
+  killEffect: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer' | 'burn' | 'firecracker';
   themeColors: any;
 }
 
@@ -92,11 +92,18 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
     };
   });
 
-  // Effect 1: Blackhole Implosion props
+  // Effect 1: Blackhole Implosion props (peaks at mid-point, then fades to 0)
   const collapseRingProps = useAnimatedProps(() => {
+    const val = aliveVal.value;
+    let opacity = 0;
+    if (val > 0.4) {
+      opacity = (1.0 - val) / 0.6;
+    } else {
+      opacity = val / 0.4;
+    }
     return {
-      r: 3.5 + (1 - aliveVal.value) * 6,
-      opacity: 1 - aliveVal.value,
+      r: 3.5 + (1 - val) * 8,
+      opacity: opacity,
     };
   });
 
@@ -111,15 +118,29 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   });
 
   const craterProps = useAnimatedProps(() => {
+    const val = aliveVal.value;
+    let opacity = 0;
+    if (val > 0.4) {
+      opacity = (1.0 - val) / 0.6;
+    } else {
+      opacity = val / 0.4;
+    }
     return {
-      opacity: 1 - aliveVal.value,
+      opacity: opacity,
     };
   });
 
   // Effect 3: Digital Dissolve props
   const dissolveProps = useAnimatedProps(() => {
+    const val = aliveVal.value;
+    let opacity = 0;
+    if (val > 0.4) {
+      opacity = 0.45 * ((1.0 - val) / 0.6);
+    } else {
+      opacity = 0.45 * (val / 0.4);
+    }
     return {
-      opacity: 0.45 * (1 - aliveVal.value),
+      opacity: opacity,
     };
   });
 
@@ -216,6 +237,83 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   const shard5Props = shardProps(240, 32);
   const shard6Props = shardProps(300, 32);
 
+  // Effect 6: Incinerating Flame (rising, scaling, fading flames)
+  const flameRedStyle = useAnimatedStyle(() => {
+    const val = aliveVal.value;
+    const progress = 1.0 - val;
+    const scale = progress * 1.5;
+    const ty = -18 * progress;
+    const opacity = progress < 0.85 ? 1.0 - (progress / 0.85) : 0;
+    return {
+      transform: [
+        { translateX: cx },
+        { translateY: cy + ty },
+        { scale: scale },
+      ],
+      opacity: opacity,
+    };
+  });
+
+  const flameOrangeStyle = useAnimatedStyle(() => {
+    const val = aliveVal.value;
+    const progress = 1.0 - val;
+    const scale = progress * 1.25;
+    const ty = -24 * progress;
+    const opacity = progress < 0.75 ? 1.0 - (progress / 0.75) : 0;
+    return {
+      transform: [
+        { translateX: cx },
+        { translateY: cy + ty },
+        { scale: scale },
+      ],
+      opacity: opacity,
+    };
+  });
+
+  const flameYellowStyle = useAnimatedStyle(() => {
+    const val = aliveVal.value;
+    const progress = 1.0 - val;
+    const scale = progress * 0.95;
+    const ty = -30 * progress;
+    const opacity = progress < 0.65 ? 1.0 - (progress / 0.65) : 0;
+    return {
+      transform: [
+        { translateX: cx },
+        { translateY: cy + ty },
+        { scale: scale },
+      ],
+      opacity: opacity,
+    };
+  });
+
+  // Effect 7: Firecracker Burst (8 colorful radial shooting sparks)
+  const firecrackerSparkProps = (angle: number, colorHex: string) => {
+    return useAnimatedProps(() => {
+      const val = aliveVal.value;
+      const progress = 1.0 - val;
+      const maxDist = 38;
+      const dist = progress * maxDist;
+      const opacity = progress < 0.9 ? 1.0 - (progress / 0.9) : 0;
+      const rad = (angle * Math.PI) / 180;
+      return {
+        cx: cx + Math.cos(rad) * dist,
+        cy: cy + Math.sin(rad) * dist,
+        opacity: opacity,
+        r: 3.8 * (1.0 - progress),
+        fill: colorHex,
+      };
+    });
+  };
+
+  const firecrackerSpark1Props = firecrackerSparkProps(0, '#FF007F');
+  const firecrackerSpark2Props = firecrackerSparkProps(45, '#FDE047');
+  const firecrackerSpark3Props = firecrackerSparkProps(90, '#00F2FF');
+  const firecrackerSpark4Props = firecrackerSparkProps(135, '#39FF14');
+  const firecrackerSpark5Props = firecrackerSparkProps(180, '#FF5F1F');
+  const firecrackerSpark6Props = firecrackerSparkProps(225, '#B026FF');
+  const firecrackerSpark7Props = firecrackerSparkProps(270, '#FFFF00');
+  const firecrackerSpark8Props = firecrackerSparkProps(315, '#00FFFF');
+
   return (
     <G>
       {/* Outer Selection Highlight Ring */}
@@ -302,30 +400,28 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
 
       {killEffect === 'monster' && (
         <G>
-          {/* Monster Chomper Top Jaw */}
+          {/* Menacing Cyber Beast Top Jaw */}
           {/* @ts-ignore */}
           <AnimatedG style={topJawStyle}>
             <Path
-              d="M -28,-4 Q 0,-30 28,-4 L 28,0 L 20,-8 L 12,0 L 0,-10 L -12,0 L -20,-8 L -28,0 Z"
-              fill={killerColor}
-              stroke="rgba(0, 0, 0, 0.4)"
-              strokeWidth={1}
+              d="M -28,-4 Q 0,-30 28,-4 L 28,0 L 18,-14 L 10,0 L 0,-16 L -10,0 L -18,-14 L -28,0 Z"
+              fill="#0F172A"
+              stroke={killerColor}
+              strokeWidth={2.0}
             />
-            {/* Monster Eyes */}
-            <Circle cx={-9} cy={-14} r={3.5} fill="#FDE047" />
-            <Circle cx={9} cy={-14} r={3.5} fill="#FDE047" />
-            <Circle cx={-9} cy={-14} r={1.2} fill="#000000" />
-            <Circle cx={9} cy={-14} r={1.2} fill="#000000" />
+            {/* Angry Slanted Laser Eyes */}
+            <Path d="M -13,-15 L -4,-11 L -9,-7 Z" fill={killerColor} />
+            <Path d="M 13,-15 L 4,-11 L 9,-7 Z" fill={killerColor} />
           </AnimatedG>
 
-          {/* Monster Chomper Bottom Jaw */}
+          {/* Menacing Cyber Beast Bottom Jaw */}
           {/* @ts-ignore */}
           <AnimatedG style={bottomJawStyle}>
             <Path
-              d="M -28,4 Q 0,30 28,4 L 28,0 L 20,8 L 12,0 L 0,10 L -12,0 L -20,8 L -28,0 Z"
-              fill={killerColor}
-              stroke="rgba(0, 0, 0, 0.4)"
-              strokeWidth={1}
+              d="M -28,4 Q 0,30 28,4 L 28,0 L 18,14 L 10,0 L 0,16 L -10,0 L -18,14 L -28,0 Z"
+              fill="#0F172A"
+              stroke={killerColor}
+              strokeWidth={2.0}
             />
           </AnimatedG>
         </G>
@@ -333,26 +429,55 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
 
       {killEffect === 'hammer' && (
         <G>
-          {/* Smash Hammer */}
+          {/* Cybernetic Energy Warhammer */}
           {/* @ts-ignore */}
           <AnimatedG style={hammerStyle}>
+            {/* Dark carbon-fiber handle */}
             <Rect
-              x={-3.5}
-              y={-87}
-              width={7}
-              height={75}
-              rx={2}
-              fill="#D97706"
+              x={-3}
+              y={-70}
+              width={6}
+              height={65}
+              rx={1}
+              fill="#1E293B"
+              stroke="#475569"
+              strokeWidth={0.8}
             />
+            {/* Heavy guard */}
             <Rect
-              x={-20}
-              y={-99}
-              width={40}
-              height={24}
-              rx={4}
+              x={-8}
+              y={-72}
+              width={16}
+              height={4}
+              rx={1}
               fill="#64748B"
+            />
+            {/* Glowing neon handle conduit */}
+            <Line
+              x1={0}
+              y1={-68}
+              x2={0}
+              y2={-8}
               stroke={killerColor}
-              strokeWidth={1.5}
+              strokeWidth={1.2}
+              opacity={0.8}
+            />
+            {/* Heavy multi-faceted warhammer head */}
+            <Path
+              d="M -24,-94 L -16,-106 L 16,-106 L 24,-94 L 24,-82 L 16,-70 L -16,-70 L -24,-82 Z"
+              fill="#334155"
+              stroke={killerColor}
+              strokeWidth={2.2}
+            />
+            {/* Engraved glowing reactor core */}
+            <Rect
+              x={-10}
+              y={-92}
+              width={20}
+              height={8}
+              rx={2}
+              fill={killerColor}
+              opacity={0.9}
             />
           </AnimatedG>
 
@@ -363,6 +488,48 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
           <AnimatedCircle r={4.5} fill={color} animatedProps={shard4Props} />
           <AnimatedCircle r={4.5} fill={color} animatedProps={shard5Props} />
           <AnimatedCircle r={4.5} fill={color} animatedProps={shard6Props} />
+        </G>
+      )}
+
+      {killEffect === 'burn' && (
+        <G>
+          {/* Flame Red */}
+          {/* @ts-ignore */}
+          <AnimatedG style={flameRedStyle}>
+            <Path
+              d="M 0,-15 Q -10,0 0,10 Q 10,0 0,-15 Z"
+              fill="#EF4444"
+            />
+          </AnimatedG>
+          {/* Flame Orange */}
+          {/* @ts-ignore */}
+          <AnimatedG style={flameOrangeStyle}>
+            <Path
+              d="M 0,-12 Q -8,0 0,8 Q 8,0 0,-12 Z"
+              fill="#F97316"
+            />
+          </AnimatedG>
+          {/* Flame Yellow */}
+          {/* @ts-ignore */}
+          <AnimatedG style={flameYellowStyle}>
+            <Path
+              d="M 0,-9 Q -6,0 0,6 Q 6,0 0,-9 Z"
+              fill="#FBBF24"
+            />
+          </AnimatedG>
+        </G>
+      )}
+
+      {killEffect === 'firecracker' && (
+        <G>
+          <AnimatedCircle animatedProps={firecrackerSpark1Props} />
+          <AnimatedCircle animatedProps={firecrackerSpark2Props} />
+          <AnimatedCircle animatedProps={firecrackerSpark3Props} />
+          <AnimatedCircle animatedProps={firecrackerSpark4Props} />
+          <AnimatedCircle animatedProps={firecrackerSpark5Props} />
+          <AnimatedCircle animatedProps={firecrackerSpark6Props} />
+          <AnimatedCircle animatedProps={firecrackerSpark7Props} />
+          <AnimatedCircle animatedProps={firecrackerSpark8Props} />
         </G>
       )}
 

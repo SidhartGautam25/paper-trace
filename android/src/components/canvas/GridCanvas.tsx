@@ -15,7 +15,7 @@ interface GridCanvasProps {
   selectedDirection: Direction | null;
   onSelectDot: (dotId: string) => void;
   themeColors: any;
-  killEffect: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer';
+  killEffect: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer' | 'burn' | 'firecracker';
   onSelectDirection: (dir: Direction) => void;
   onGestureEnd: () => void;
   onGestureStart?: () => void;
