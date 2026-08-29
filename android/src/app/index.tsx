@@ -13,6 +13,14 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Svg, { Circle, Line } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES, KILL_EFFECTS } from '../constants/theme';
+import {
+  CHARACTER_LIST,
+  DEFAULT_CHARACTER_LOADOUT,
+  getCharacter,
+  parseCharacterLoadout,
+} from '../constants/characters';
+import { CharacterId } from '../types/game';
+import { getSavedCharacterLoadout, saveCharacterLoadout } from '../utils/characterConfig';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -25,8 +33,7 @@ export default function HomeScreen() {
     p1LineColor?: string;
     p2DotColor?: string;
     p2LineColor?: string;
-    p1DotShape?: string;
-    p2DotShape?: string;
+    characters?: string;
   }>();
   const insets = useSafeAreaInsets();
 
@@ -57,9 +64,13 @@ export default function HomeScreen() {
   const [p2DotColor, setP2DotColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p2);
   const [p2LineColor, setP2LineColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p2);
 
-  // Custom Shapes State
-  const [p1DotShape, setP1DotShape] = useState<'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star'>('circle');
-  const [p2DotShape, setP2DotShape] = useState<'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star'>('circle');
+  const [characterLoadout, setCharacterLoadout] = useState<[CharacterId, CharacterId, CharacterId]>(
+    DEFAULT_CHARACTER_LOADOUT
+  );
+
+  useEffect(() => {
+    getSavedCharacterLoadout().then(setCharacterLoadout);
+  }, []);
 
   // Synchronize state with route params when coming back from Settings
   useEffect(() => {
@@ -79,8 +90,7 @@ export default function HomeScreen() {
     }
     if (params.killEffect) setSelectedKillEffect(params.killEffect as any);
     if (params.lines) setSelectedLines(params.lines);
-    if (params.p1DotShape) setP1DotShape(params.p1DotShape as any);
-    if (params.p2DotShape) setP2DotShape(params.p2DotShape as any);
+    if (params.characters) setCharacterLoadout(parseCharacterLoadout(params.characters));
   }, [
     params.difficulty,
     params.themeId,
@@ -90,8 +100,7 @@ export default function HomeScreen() {
     params.p1LineColor,
     params.p2DotColor,
     params.p2LineColor,
-    params.p1DotShape,
-    params.p2DotShape,
+    params.characters,
   ]);
 
   const currentEffect = KILL_EFFECTS.find((e) => e.id === selectedKillEffect) || KILL_EFFECTS[0];
@@ -114,8 +123,7 @@ export default function HomeScreen() {
         p1LineColor,
         p2DotColor,
         p2LineColor,
-        p1DotShape,
-        p2DotShape,
+        characters: characterLoadout.join(','),
       },
     });
   };
@@ -132,11 +140,14 @@ export default function HomeScreen() {
         p1LineColor,
         p2DotColor,
         p2LineColor,
-        p1DotShape,
-        p2DotShape,
+        characters: characterLoadout.join(','),
       },
     });
   };
+
+  const charactersSummary = characterLoadout
+    .map((id, i) => `Dot ${i + 1}: ${getCharacter(id).name}`)
+    .join(' · ');
 
   const isThreeButtonNav = insets.bottom >= 30;
 
@@ -208,6 +219,15 @@ export default function HomeScreen() {
             </Text>
             <Text style={[styles.configVal, { color: currentTheme.colors.textPrimary }]}>
               {currentTheme.name}
+            </Text>
+          </View>
+
+          <View style={styles.configRow}>
+            <Text style={[styles.configLabel, { color: currentTheme.colors.textSecondary }]}>
+              Characters
+            </Text>
+            <Text style={[styles.configVal, { color: currentTheme.colors.textPrimary, flex: 1, textAlign: 'right', marginLeft: 8 }]}>
+              {charactersSummary}
             </Text>
           </View>
 

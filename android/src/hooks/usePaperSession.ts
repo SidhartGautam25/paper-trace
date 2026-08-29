@@ -1,112 +1,227 @@
-import { useState, useEffect } from 'react';
-import { GameState, Dot, TokenPool, Direction } from '../types/game';
-import { INITIAL_DOTS, INITIAL_TOKEN_POOL } from '../constants/board';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { GameState, Dot, TokenPool, Direction, CharacterId, CurrencyRegion, PlayerWallet } from '../types/game';
+import { EMPTY_FORCED_MOVE } from '../types/boardFeatures';
+import { MoveNotification } from '../types/notifications';
+import {
+  createInitialDots,
+  INITIAL_TOKEN_POOL,
+  createFreshCurrencyRegions,
+} from '../constants/board';
+import { createBoardFeatures } from '../constants/boardFeaturePlacements';
 import { executeShot, hasAnyValidMoves, resolveEndGameWinner } from '../engine/paperEngine';
+import { getRequiredDotIdForPlayer } from '../engine/boardFeatureEngine';
+import { refillTokenPoolIfEmpty } from '../utils/tokenPool';
 import { recordGameOutcome } from '../utils/stats';
 import { getBestMove } from '../engine/aiEngine';
+import { getCharacter } from '../constants/characters';
+import { EMPTY_WALLET } from '../utils/wallet';
+import { addToWallet } from '../utils/wallet';
+import { appendMatchRecord } from '../utils/matchHistory';
 
-const getDotLabel = (id: string, player: 1 | 2): string => {
-  const num = id.split('_')[1] || '1';
-  const name = player === 1 ? 'Player' : 'Bot';
-  return `${name} (Dot ${num})`;
-};
+function getCharacterLabel(dotId: string, dots: Dot[]): string {
+  const dot = dots.find((d) => d.id === dotId);
+  if (!dot) {
+    const num = dotId.split('_')[1] || '1';
+    return `Dot ${num}`;
+  }
+  const char = getCharacter(dot.characterId);
+  return `${dot.player === 1 ? 'Player' : 'Bot'} ${char.name}`;
+}
 
 export function usePaperSession(
-  initialDifficulty: 'easy' | 'medium' | 'hard' = 'medium'
+  initialDifficulty: 'easy' | 'medium' | 'hard' = 'medium',
+  characterLoadout: [CharacterId, CharacterId, CharacterId]
 ) {
-  const [dots, setDots] = useState<Dot[]>(INITIAL_DOTS);
+  const [dots, setDots] = useState<Dot[]>(() => createInitialDots(characterLoadout));
   const [player1Tokens, setPlayer1Tokens] = useState<TokenPool>(INITIAL_TOKEN_POOL);
   const [player2Tokens, setPlayer2Tokens] = useState<TokenPool>(INITIAL_TOKEN_POOL);
   const [activePlayer, setActivePlayer] = useState<1 | 2>(1);
   const [winner, setWinner] = useState<1 | 2 | null>(null);
   const [historyLogs, setHistoryLogs] = useState<string[]>([]);
+  const [currencyRegions, setCurrencyRegions] = useState<CurrencyRegion[]>(() =>
+    createFreshCurrencyRegions()
+  );
+  const [matchEarnings, setMatchEarnings] = useState<PlayerWallet>(EMPTY_WALLET);
+  const [boardFeatures] = useState(() => createBoardFeatures());
+  const [forcedMoveByPlayer, setForcedMoveByPlayer] = useState(EMPTY_FORCED_MOVE);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initialDifficulty);
+  const [notificationQueue, setNotificationQueue] = useState<MoveNotification[]>([]);
+  const matchSavedRef = useRef(false);
 
-  // Selection states (for human Player 1)
   const [selectedDotId, setSelectedDotId] = useState<string | null>(null);
   const [selectedToken, setSelectedToken] = useState<number | null>(null);
   const [selectedDirection, setSelectedDirection] = useState<Direction | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
 
-  // Reset parameters when active player changes & auto-select if only 1 dot alive
+  const activeNotification = notificationQueue[0] ?? null;
+  const isBotBlocked = notificationQueue.length > 0;
+
+  const dismissNotification = useCallback(() => {
+    setNotificationQueue((prev) => prev.slice(1));
+  }, []);
+
   useEffect(() => {
     const aliveP1Dots = dots.filter((d) => d.player === 1 && d.isAlive);
-    if (activePlayer === 1 && aliveP1Dots.length === 1) {
-      setSelectedDotId(aliveP1Dots[0].id);
+    const forcedId = getRequiredDotIdForPlayer(1, forcedMoveByPlayer, dots);
+
+    if (activePlayer === 1 && !winner) {
+      if (forcedId) {
+        setSelectedDotId(forcedId);
+      } else if (aliveP1Dots.length === 1) {
+        setSelectedDotId(aliveP1Dots[0].id);
+      } else {
+        setSelectedDotId(null);
+      }
     } else {
       setSelectedDotId(null);
     }
     setSelectedToken(null);
     setSelectedDirection(null);
-  }, [activePlayer, dots]);
+  }, [activePlayer, dots, forcedMoveByPlayer, winner]);
 
-  // Player 1 Move Check Trigger
+  useEffect(() => {
+    if (winner) return;
+    if (activePlayer === 1) {
+      setPlayer1Tokens((prev) => refillTokenPoolIfEmpty(prev));
+    } else {
+      setPlayer2Tokens((prev) => refillTokenPoolIfEmpty(prev));
+    }
+  }, [activePlayer, winner]);
+
   useEffect(() => {
     if (activePlayer === 1 && !winner) {
-      if (!hasAnyValidMoves(1, dots, player1Tokens)) {
+      if (!hasAnyValidMoves(1, dots, player1Tokens, boardFeatures)) {
         setWinner(resolveEndGameWinner(dots));
       }
     }
-  }, [activePlayer, winner, dots, player1Tokens]);
+  }, [activePlayer, winner, dots, player1Tokens, boardFeatures]);
 
-  // Record stats on game resolution
   useEffect(() => {
-    if (winner !== null) {
-      recordGameOutcome(winner === 1 ? 'win' : 'loss');
+    if (winner === null) {
+      matchSavedRef.current = false;
+      return;
     }
-  }, [winner]);
+    if (matchSavedRef.current) return;
+    matchSavedRef.current = true;
 
-  // AI Auto-Move Execution Trigger
+    recordGameOutcome(winner === 1 ? 'win' : 'loss');
+
+    if (matchEarnings.gold > 0 || matchEarnings.silver > 0 || matchEarnings.money > 0) {
+      addToWallet(matchEarnings);
+    }
+
+    appendMatchRecord({
+      id: `match_${Date.now()}`,
+      timestamp: Date.now(),
+      difficulty,
+      winner,
+      characterIds: characterLoadout,
+      earnings: matchEarnings,
+      moveCount: historyLogs.length,
+    });
+  }, [winner, matchEarnings, difficulty, characterLoadout, historyLogs.length]);
+
+  const buildGameState = (): GameState => ({
+    dots,
+    player1Tokens,
+    player2Tokens,
+    activePlayer,
+    winner,
+    historyLogs,
+    currencyRegions,
+    matchEarnings,
+    boardFeatures,
+    forcedMoveByPlayer,
+  });
+
+  const applyMoveResult = (result: ReturnType<typeof executeShot>, logMsg: string) => {
+    setDots(result.dots);
+    setPlayer1Tokens(result.player1Tokens);
+    setPlayer2Tokens(result.player2Tokens);
+    setActivePlayer(result.activePlayer);
+    setWinner(result.winner);
+    setCurrencyRegions(result.currencyRegions);
+    setMatchEarnings(result.matchEarnings);
+    setForcedMoveByPlayer(result.forcedMoveByPlayer);
+
+    if (result.notifications.length > 0) {
+      setNotificationQueue((prev) => [...prev, ...result.notifications]);
+    }
+
+    let fullLog = logMsg;
+    if (result.featureMessages.length > 0) {
+      fullLog += ` ⚡ ${result.featureMessages.join('; ')}`;
+    }
+    const c = result.currencyCollectedThisMove;
+    if (c.gold > 0 || c.silver > 0 || c.money > 0) {
+      const parts: string[] = [];
+      if (c.gold > 0) parts.push(`🪙${c.gold}`);
+      if (c.silver > 0) parts.push(`🥈${c.silver}`);
+      if (c.money > 0) parts.push(`💵${c.money}`);
+      fullLog += ` 💰 Collected ${parts.join(' ')}`;
+    }
+    setHistoryLogs((prev) => [fullLog, ...prev]);
+  };
+
   useEffect(() => {
-    if (activePlayer === 2 && !winner) {
-      setIsAiThinking(true);
-      const timer = setTimeout(() => {
-        const currentGameState: GameState = {
-          dots,
-          player1Tokens,
-          player2Tokens,
-          activePlayer,
-          winner,
-          historyLogs,
-        };
+    if (activePlayer !== 2 || winner || isBotBlocked) {
+      if (isBotBlocked) setIsAiThinking(false);
+      return;
+    }
 
-        const bestMove = getBestMove(currentGameState, difficulty);
+    setIsAiThinking(true);
+    const timer = setTimeout(() => {
+      const currentGameState = buildGameState();
+      const bestMove = getBestMove(currentGameState, difficulty);
 
-        if (bestMove) {
-          const result = executeShot(bestMove.dotId, bestMove.direction, bestMove.tokenValue, currentGameState);
-          if (result.success) {
-            setDots(result.dots);
-            setPlayer1Tokens(result.player1Tokens);
-            setPlayer2Tokens(result.player2Tokens);
-            setActivePlayer(result.activePlayer);
-            setWinner(result.winner);
-
-            // Log AI turn details
-            const botDotLabel = getDotLabel(bestMove.dotId, 2);
-            let logMsg = `${botDotLabel} shoots ${bestMove.direction} (dist ${bestMove.tokenValue})`;
-            if (result.killedDots.length > 0) {
-              const killedLabels = result.killedDots.map((id) => getDotLabel(id, 1));
-              logMsg += ` 🎯 KILLS ${killedLabels.join(', ')}!`;
-            }
-            if (result.prunedLinesCount > 0) {
-              logMsg += ` ✂️ (pruned ${result.prunedLinesCount} paths)`;
-            }
-            setHistoryLogs((prev) => [logMsg, ...prev]);
-          } else {
-            setActivePlayer(1);
+      if (bestMove) {
+        const result = executeShot(
+          bestMove.dotId,
+          bestMove.direction,
+          bestMove.tokenValue,
+          currentGameState
+        );
+        if (result.success) {
+          const botDotLabel = getCharacterLabel(bestMove.dotId, currentGameState.dots);
+          let logMsg = `${botDotLabel} shoots ${bestMove.direction} (dist ${bestMove.tokenValue})`;
+          if (result.killedDots.length > 0) {
+            const killedLabels = result.killedDots.map((id) =>
+              getCharacterLabel(id, result.dots)
+            );
+            logMsg += ` 🎯 KILLS ${killedLabels.join(', ')}!`;
           }
+          if (result.prunedLinesCount > 0) {
+            logMsg += ` ✂️ (pruned ${result.prunedLinesCount} paths)`;
+          }
+          applyMoveResult(result, logMsg);
         } else {
-          setWinner(resolveEndGameWinner(dots));
+          setActivePlayer(1);
         }
-        setIsAiThinking(false);
-      }, 800);
+      } else {
+        setWinner(resolveEndGameWinner(dots));
+      }
+      setIsAiThinking(false);
+    }, 800);
 
-      return () => clearTimeout(timer);
-    }
-  }, [activePlayer, winner, dots, player1Tokens, player2Tokens, difficulty]);
+    return () => clearTimeout(timer);
+  }, [
+    activePlayer,
+    winner,
+    isBotBlocked,
+    dots,
+    player1Tokens,
+    player2Tokens,
+    difficulty,
+    currencyRegions,
+    matchEarnings,
+    forcedMoveByPlayer,
+    boardFeatures,
+  ]);
 
   const selectDot = (dotId: string) => {
-    if (activePlayer !== 1 || winner) return;
+    if (activePlayer !== 1 || winner || isBotBlocked) return;
+    const forcedId = getRequiredDotIdForPlayer(1, forcedMoveByPlayer, dots);
+    if (forcedId && dotId !== forcedId) return;
     const dot = dots.find((d) => d.id === dotId);
     if (dot && dot.player === 1 && dot.isAlive) {
       setSelectedDotId(dotId);
@@ -114,74 +229,62 @@ export function usePaperSession(
   };
 
   const selectToken = (value: number) => {
-    if (activePlayer !== 1 || winner) return;
+    if (activePlayer !== 1 || winner || isBotBlocked) return;
     if (player1Tokens[value] > 0) {
       setSelectedToken(value);
     }
   };
 
   const selectDirection = (dir: Direction) => {
-    if (activePlayer !== 1 || winner) return;
+    if (activePlayer !== 1 || winner || isBotBlocked) return;
     setSelectedDirection(dir);
   };
 
   const executeMove = (): { success: boolean; error?: string } => {
-    if (activePlayer !== 1 || winner) {
-      return { success: false, error: 'Not your turn.' };
+    if (activePlayer !== 1 || winner || isBotBlocked) {
+      return { success: false, error: isBotBlocked ? 'Please wait…' : 'Not your turn.' };
     }
     if (!selectedDotId || selectedToken === null || !selectedDirection) {
       return { success: false, error: 'Please choose a Dot, Token, and Direction.' };
     }
 
-    const currentGameState: GameState = {
-      dots,
-      player1Tokens,
-      player2Tokens,
-      activePlayer,
-      winner,
-      historyLogs,
-    };
-
-    const result = executeShot(selectedDotId, selectedDirection, selectedToken, currentGameState);
+    const result = executeShot(selectedDotId, selectedDirection, selectedToken, buildGameState());
     if (result.success) {
-      setDots(result.dots);
-      setPlayer1Tokens(result.player1Tokens);
-      setPlayer2Tokens(result.player2Tokens);
-      setActivePlayer(result.activePlayer);
-      setWinner(result.winner);
-
-      // Log player turn details
-      const playerDotLabel = getDotLabel(selectedDotId, 1);
+      const playerDotLabel = getCharacterLabel(selectedDotId, dots);
       let logMsg = `${playerDotLabel} shoots ${selectedDirection} (dist ${selectedToken})`;
       if (result.killedDots.length > 0) {
-        const killedLabels = result.killedDots.map((id) => getDotLabel(id, 2));
+        const killedLabels = result.killedDots.map((id) => getCharacterLabel(id, result.dots));
         logMsg += ` 🎯 KILLS ${killedLabels.join(', ')}!`;
       }
       if (result.prunedLinesCount > 0) {
         logMsg += ` ✂️ (pruned ${result.prunedLinesCount} paths)`;
       }
-      setHistoryLogs((prev) => [logMsg, ...prev]);
+      applyMoveResult(result, logMsg);
 
       setSelectedDotId(null);
       setSelectedToken(null);
       setSelectedDirection(null);
       return { success: true };
-    } else {
-      return { success: false, error: result.error };
     }
+    return { success: false, error: result.error };
   };
 
   const resetGame = () => {
-    setDots(INITIAL_DOTS);
+    setDots(createInitialDots(characterLoadout));
     setPlayer1Tokens(INITIAL_TOKEN_POOL);
     setPlayer2Tokens(INITIAL_TOKEN_POOL);
     setActivePlayer(1);
     setWinner(null);
     setHistoryLogs([]);
+    setCurrencyRegions(createFreshCurrencyRegions());
+    setMatchEarnings(EMPTY_WALLET);
+    setForcedMoveByPlayer(EMPTY_FORCED_MOVE);
+    setNotificationQueue([]);
     setSelectedDotId(null);
     setSelectedToken(null);
     setSelectedDirection(null);
     setIsAiThinking(false);
+    matchSavedRef.current = false;
   };
 
   return {
@@ -191,16 +294,24 @@ export function usePaperSession(
     activePlayer,
     winner,
     historyLogs,
+    currencyRegions,
+    matchEarnings,
+    boardFeatures,
+    forcedMoveByPlayer,
     difficulty,
     setDifficulty,
     selectedDotId,
     selectedToken,
     selectedDirection,
     isAiThinking,
+    isBotBlocked,
+    activeNotification,
+    dismissNotification,
     selectDot,
     selectToken,
     selectDirection,
     executeMove,
     resetGame,
+    characterLoadout,
   };
 }

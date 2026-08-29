@@ -2,11 +2,16 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Circle, G, Rect } from 'react-native-svg';
-import { Dot, Direction, Point } from '../../types/game';
+import { Dot, Direction, Point, CharacterId, CurrencyRegion, BoardFeatureInstance } from '../../types/game';
 import { GRID_CONFIG } from '../../constants/board';
 import { LineSegment } from './LineSegment';
 import { BaseDotMarker } from './BaseDotMarker';
+import { BoardRegionLayer } from './BoardRegionLayer';
+import { TrapPointMarkers } from './TrapPointMarkers';
 import { getDestination, isWithinBounds } from '../../engine/geometry';
+import { canLandAt } from '../../engine/boardFeatureEngine';
+import { getCharacterForDot, DotShape } from '../../constants/characters';
+import { getAllTrapPoints, getVisibleTrailSegments } from '../../engine/characterEngine';
 
 interface GridCanvasProps {
   dots: Dot[];
@@ -24,9 +29,10 @@ interface GridCanvasProps {
   p1LineColor: string;
   p2DotColor: string;
   p2LineColor: string;
-  p1DotShape?: 'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star';
-  p2DotShape?: 'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star';
   selectedLines: string[];
+  characterLoadout: [CharacterId, CharacterId, CharacterId];
+  currencyRegions: CurrencyRegion[];
+  boardFeatures: BoardFeatureInstance[];
   maxHeight: number;
   maxWidth: number;
 }
@@ -47,9 +53,10 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   p1LineColor,
   p2DotColor,
   p2LineColor,
-  p1DotShape = 'circle',
-  p2DotShape = 'circle',
   selectedLines,
+  characterLoadout,
+  currencyRegions,
+  boardFeatures,
   maxHeight,
   maxWidth,
 }) => {
@@ -149,32 +156,24 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     handleEnd();
   };
 
-  // Retrieve the custom shade for a specific dot
-  const getDotColor = (dotId: string, player: 1 | 2): string => {
-    if (player === 1) {
-      if (p1DotColor) return p1DotColor;
-    } else {
-      if (p2DotColor) return p2DotColor;
-    }
-    const shades = player === 1 ? themeColors.p1Shades : themeColors.p2Shades;
-    if (dotId.endsWith('_1')) return shades[0];
-    if (dotId.endsWith('_2')) return shades[1];
-    if (dotId.endsWith('_3')) return shades[2];
-    return shades[0];
+  // Retrieve color from character definition (per dot slot)
+  const getDotColor = (dotId: string): string => {
+    return getCharacterForDot(dotId, characterLoadout).dotColor;
   };
 
-  const getLineColor = (dotId: string, player: 1 | 2): string => {
-    if (player === 1) {
-      if (p1LineColor) return p1LineColor;
-    } else {
-      if (p2LineColor) return p2LineColor;
-    }
-    const shades = player === 1 ? themeColors.p1Shades : themeColors.p2Shades;
-    if (dotId.endsWith('_1')) return shades[0];
-    if (dotId.endsWith('_2')) return shades[1];
-    if (dotId.endsWith('_3')) return shades[2];
-    return shades[0];
+  const getLineColor = (dotId: string): string => {
+    return getCharacterForDot(dotId, characterLoadout).lineColor;
   };
+
+  const getLineStyleForDot = (dotId: string): string => {
+    return getCharacterForDot(dotId, characterLoadout).lineStyle;
+  };
+
+  const getShapeForDot = (dotId: string): DotShape => {
+    return getCharacterForDot(dotId, characterLoadout).shape;
+  };
+
+  const trapPoints = getAllTrapPoints(dots);
 
   // Draw modern dark grid alignment guides (subtle lines)
   const gridLines = [];
@@ -269,13 +268,14 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 
     const startPos = movingDot.currentPos;
     const directions: Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    const baseColor = getLineColor(selectedDotId, 1);
+    const baseColor = getLineColor(selectedDotId);
 
     return (
       <G opacity={0.45}>
         {directions.map((dir) => {
           const endPos = getDestination(startPos, dir, selectedToken);
           if (!isWithinBounds(endPos)) return null;
+          if (!canLandAt(endPos, selectedDotId, dots, boardFeatures)) return null;
 
           const x1 = startPos.c * cellSize + offsetX;
           const y1 = startPos.r * cellSize + offsetY;
@@ -325,55 +325,22 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const y2 = endPos.r * cellSize + offsetY;
 
     const inBounds = isWithinBounds(endPos);
-    
-    // Preview uses the moving dot's primary shade or red alert if out-of-bounds
-    const baseColor = getLineColor(selectedDotId, 1);
-    const strokeColor = inBounds ? baseColor : '#EF4444';
-    const dotNumber = selectedDotId.split('_')[1] || '1';
+    const canLand = inBounds && canLandAt(endPos, selectedDotId, dots, boardFeatures);
+    const baseColor = getLineColor(selectedDotId);
+    const strokeColor = canLand ? baseColor : '#EF4444';
+    const lineStyle = getLineStyleForDot(selectedDotId);
 
     return (
       <G>
-        {/* Trajectory preview path with different styles */}
-        {dotNumber === '2' ? (
-          <Line
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={strokeColor}
-            strokeWidth={3}
-            strokeDasharray="1, 5"
-          />
-        ) : dotNumber === '3' ? (
+        {lineStyle === 'glow' ? (
           <G>
-            <Line
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={strokeColor}
-              strokeWidth={8}
-              strokeOpacity={0.2}
-            />
-            <Line
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={strokeColor}
-              strokeWidth={2.5}
-            />
+            <Line x1={x1} y1={y1} x2={x2} y2={y2} stroke={strokeColor} strokeWidth={8} strokeOpacity={0.2} />
+            <Line x1={x1} y1={y1} x2={x2} y2={y2} stroke={strokeColor} strokeWidth={2.5} />
           </G>
+        ) : lineStyle === 'dotted' ? (
+          <Line x1={x1} y1={y1} x2={x2} y2={y2} stroke={strokeColor} strokeWidth={3} strokeDasharray="1, 5" />
         ) : (
-          <Line
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={strokeColor}
-            strokeWidth={2.5}
-            strokeDasharray="4, 4"
-          />
+          <Line x1={x1} y1={y1} x2={x2} y2={y2} stroke={strokeColor} strokeWidth={2.5} strokeDasharray="4, 4" />
         )}
 
         {/* Destination end ring */}
@@ -419,27 +386,45 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         {/* Grid lines guides */}
         {gridLines}
 
+        {/* Region zones (treasure + special properties) */}
+        <BoardRegionLayer
+          currencyRegions={currencyRegions}
+          boardFeatures={boardFeatures}
+          cellSize={cellSize}
+          offsetX={offsetX}
+          offsetY={offsetY}
+        />
+
         {/* Corner tactical overlays */}
         {renderCornerCrosshairs()}
 
         {/* Grid dots */}
         {gridIntersections}
 
-        {/* Renders line trails using respective dot shades and line style settings */}
+        <TrapPointMarkers
+          trapPoints={trapPoints}
+          cellSize={cellSize}
+          offsetX={offsetX}
+          offsetY={offsetY}
+        />
+
+        {/* Renders line trails using character styles */}
         {dots.map((dot) => {
           if (!dot) return null;
-          const lineColor = getLineColor(dot.id, dot.player);
-          return dot.history.map((segment, idx) => (
+          const lineColor = getLineColor(dot.id);
+          const charLineStyle = getLineStyleForDot(dot.id);
+          const visibleTrail = getVisibleTrailSegments(dot);
+          return visibleTrail.map((segment, idx) => (
             <LineSegment
               key={segment.id}
               segment={segment}
               color={lineColor}
               index={idx}
-              historyLength={dot.history.length}
+              historyLength={visibleTrail.length}
               cellSize={cellSize}
               offsetX={offsetX}
               offsetY={offsetY}
-              selectedLines={selectedLines}
+              selectedLines={[charLineStyle]}
             />
           ));
         })}
@@ -453,7 +438,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         {/* Active Player Node Markers */}
         {dots.map((dot) => {
           if (!dot) return null;
-          const color = getDotColor(dot.id, dot.player);
+          const color = getDotColor(dot.id);
           const isSelected = selectedDotId === dot.id;
           return (
             <BaseDotMarker
@@ -466,14 +451,15 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               offsetY={offsetY}
               killEffect={killEffect}
               themeColors={themeColors}
-              shape={dot.player === 1 ? p1DotShape : p2DotShape}
+              shape={getShapeForDot(dot.id)}
+              boardFeatures={boardFeatures}
             />
           );
         })}
       </Svg>
 
       {/* Absolute overlay for reliable cross-platform tap targets */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: 'box-none' }]}>
         {dots.map((dot) => {
           if (!dot || !dot.isAlive) return null;
           // Calculate click target center coordinates

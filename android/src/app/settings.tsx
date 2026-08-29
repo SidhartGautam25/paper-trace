@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -13,6 +13,12 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES, KILL_EFFECTS } from '../constants/theme';
+import {
+  CHARACTER_LIST,
+  parseCharacterLoadout,
+} from '../constants/characters';
+import { CharacterId } from '../types/game';
+import { getSavedCharacterLoadout, saveCharacterLoadout } from '../utils/characterConfig';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 export default function SettingsScreen() {
@@ -26,8 +32,7 @@ export default function SettingsScreen() {
     p1LineColor?: string;
     p2DotColor?: string;
     p2LineColor?: string;
-    p1DotShape?: string;
-    p2DotShape?: string;
+    characters?: string;
   }>();
   const insets = useSafeAreaInsets();
 
@@ -84,22 +89,23 @@ export default function SettingsScreen() {
     params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow']
   );
 
-  // Shape configurations
-  const [p1DotShape, setP1DotShape] = useState<'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star'>(
-    (params.p1DotShape as any) || 'circle'
-  );
-  const [p2DotShape, setP2DotShape] = useState<'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star'>(
-    (params.p2DotShape as any) || 'circle'
+  const [characterLoadout, setCharacterLoadout] = useState<[CharacterId, CharacterId, CharacterId]>(
+    parseCharacterLoadout(params.characters)
   );
 
-  const availableShapes = [
-    { id: 'circle', label: 'Classic Circle', desc: 'Symmetrical circular neon aura' },
-    { id: 'arrow', label: 'Stealth Arrow', desc: 'Triangulated aerodynamic pointer' },
-    { id: 'hexagon', label: 'Cyber Hexagon', desc: 'Six-sided high-tech vector construct' },
-    { id: 'diamond', label: 'Neon Diamond', desc: 'Four-sided sharp energy diamond' },
-    { id: 'square', label: 'Power Square', desc: 'Solid cybernetic modular square block' },
-    { id: 'star', label: 'Nova Star', desc: 'Four-pointed radiating starburst' },
-  ];
+  useEffect(() => {
+    if (!params.characters) {
+      getSavedCharacterLoadout().then(setCharacterLoadout);
+    }
+  }, [params.characters]);
+
+  const setSlotCharacter = (slot: 0 | 1 | 2, charId: CharacterId) => {
+    setCharacterLoadout((prev) => {
+      const next: [CharacterId, CharacterId, CharacterId] = [...prev];
+      next[slot] = charId;
+      return next;
+    });
+  };
 
   const COLOR_PALETTE = [
     { value: '#00F2FF', label: 'Cyan' },
@@ -140,20 +146,6 @@ export default function SettingsScreen() {
             <Path d="M 0,-4 L 3.5,-2 L 3.5,2 L 0,4 L -3.5,2 L -3.5,-2 Z" fill="#FFFFFF" opacity={0.65} />
           </Svg>
         );
-      case 'diamond':
-        return (
-          <Svg width={20} height={20} viewBox="-10 -10 20 20">
-            <Path d="M 0,-9 L 8,0 L 0,9 L -8,0 Z" fill={color} />
-            <Path d="M 0,-4 L 3.5,0 L 0,4 L -3.5,0 Z" fill="#FFFFFF" opacity={0.65} />
-          </Svg>
-        );
-      case 'square':
-        return (
-          <Svg width={20} height={20} viewBox="-10 -10 20 20">
-            <Rect x={-7} y={-7} width={14} height={14} rx={1.5} fill={color} />
-            <Rect x={-3} y={-3} width={6} height={6} rx={0.5} fill="#FFFFFF" opacity={0.65} />
-          </Svg>
-        );
       case 'star':
         return (
           <Svg width={20} height={20} viewBox="-10 -10 20 20">
@@ -181,8 +173,9 @@ export default function SettingsScreen() {
     setP2LineColor(defaults.p2);
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (selectedLines.length !== 3) return;
+    await saveCharacterLoadout(characterLoadout);
     router.replace({
       pathname: '/',
       params: {
@@ -194,8 +187,7 @@ export default function SettingsScreen() {
         p1LineColor,
         p2DotColor,
         p2LineColor,
-        p1DotShape,
-        p2DotShape,
+        characters: characterLoadout.join(','),
       },
     });
   };
@@ -274,6 +266,59 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             );
           })}
+        </View>
+
+        {/* Character Roster — same 3 for you and bot */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
+            Character Roster (You & Bot)
+          </Text>
+          <Text style={[styles.rosterHint, { color: currentTheme.colors.textSecondary }]}>
+            Each character defines dot shape and power. Both sides use the same roster.
+          </Text>
+          {[0, 1, 2].map((slot) => (
+            <View key={`slot_${slot}`} style={{ marginBottom: 14 }}>
+              <Text style={[styles.slotLabel, { color: currentTheme.colors.textPrimary }]}>
+                Dot {slot + 1}
+              </Text>
+              {CHARACTER_LIST.map((char) => {
+                const isSelected = characterLoadout[slot] === char.id;
+                return (
+                  <TouchableOpacity
+                    key={`${slot}_${char.id}`}
+                    style={[
+                      styles.optionCard,
+                      {
+                        backgroundColor: currentTheme.colors.cardBackground,
+                        borderColor: isSelected ? char.dotColor : currentTheme.colors.border,
+                      },
+                    ]}
+                    onPress={() => setSlotCharacter(slot as 0 | 1 | 2, char.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.cardHeader}>
+                      <View style={{ marginRight: 8 }}>{renderShapePreview(char.shape, char.dotColor)}</View>
+                      <View
+                        style={[
+                          styles.radioCircle,
+                          {
+                            borderColor: isSelected ? char.dotColor : currentTheme.colors.textSecondary,
+                            backgroundColor: isSelected ? char.dotColor : 'transparent',
+                          },
+                        ]}
+                      />
+                      <Text style={[styles.cardTitle, { color: currentTheme.colors.textPrimary }]}>
+                        {char.name} — {char.title}
+                      </Text>
+                    </View>
+                    <Text style={[styles.cardDesc, { color: currentTheme.colors.textSecondary }]}>
+                      {char.powerName}: {char.powerDescription}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
         </View>
 
         {/* Grid Aesthetics */}
@@ -511,86 +556,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Player Dot Shapes */}
-        <View style={[styles.section, isShortScreen && { marginBottom: 14 }]}>
-          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
-            Player Dot Shapes
-          </Text>
-          <View style={[styles.colorCard, { backgroundColor: currentTheme.colors.cardBackground, borderColor: currentTheme.colors.border }]}>
-            
-            {/* Player 1 Shapes */}
-            <Text style={[styles.colorSectionHeader, { color: currentTheme.colors.accent }]}>Your Dot Shape (Player 1)</Text>
-            
-            <View style={styles.colorSubLabelRow}>
-              <Text style={[styles.colorSubLabel, { color: currentTheme.colors.textPrimary }]}>Active Shape</Text>
-              <Text style={[styles.colorSelectedValueText, { color: currentTheme.colors.textSecondary }]}>
-                {availableShapes.find((s) => s.id === p1DotShape)?.label || p1DotShape}
-              </Text>
-            </View>
-            <View style={styles.shapePreviewRow}>
-              {availableShapes.map((shapeItem) => {
-                const isSelected = p1DotShape === shapeItem.id;
-                return (
-                  <TouchableOpacity
-                    key={`p1shape_${shapeItem.id}`}
-                    style={[
-                      styles.shapeOptionCircle,
-                      { borderColor: isSelected ? currentTheme.colors.accent : 'rgba(255,255,255,0.1)' },
-                      isSelected && { backgroundColor: 'rgba(255,255,255,0.05)' }
-                    ]}
-                    onPress={() => setP1DotShape(shapeItem.id as any)}
-                    activeOpacity={0.8}
-                  >
-                    {renderShapePreview(shapeItem.id, p1DotColor)}
-                    {isSelected && (
-                      <View style={styles.shapeCheckOverlay}>
-                        <Text style={styles.shapeCheckMark}>✓</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 12 }} />
-
-            {/* Player 2 Shapes */}
-            <Text style={[styles.colorSectionHeader, { color: currentTheme.colors.p2Shades[0] }]}>Bot Dot Shape (Player 2)</Text>
-            
-            <View style={styles.colorSubLabelRow}>
-              <Text style={[styles.colorSubLabel, { color: currentTheme.colors.textPrimary }]}>Active Shape</Text>
-              <Text style={[styles.colorSelectedValueText, { color: currentTheme.colors.textSecondary }]}>
-                {availableShapes.find((s) => s.id === p2DotShape)?.label || p2DotShape}
-              </Text>
-            </View>
-            <View style={styles.shapePreviewRow}>
-              {availableShapes.map((shapeItem) => {
-                const isSelected = p2DotShape === shapeItem.id;
-                return (
-                  <TouchableOpacity
-                    key={`p2shape_${shapeItem.id}`}
-                    style={[
-                      styles.shapeOptionCircle,
-                      { borderColor: isSelected ? currentTheme.colors.p2Shades[0] : 'rgba(255,255,255,0.1)' },
-                      isSelected && { backgroundColor: 'rgba(255,255,255,0.05)' }
-                    ]}
-                    onPress={() => setP2DotShape(shapeItem.id as any)}
-                    activeOpacity={0.8}
-                  >
-                    {renderShapePreview(shapeItem.id, p2DotColor)}
-                    {isSelected && (
-                      <View style={styles.shapeCheckOverlay}>
-                        <Text style={styles.shapeCheckMark}>✓</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-          </View>
-        </View>
-
         {/* Custom Line Configurations */}
         <View style={[styles.section, isShortScreen && { marginBottom: 14 }]}>
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
@@ -719,6 +684,17 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     marginBottom: 12,
+  },
+  rosterHint: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  slotLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   optionCard: {
     borderRadius: 12,

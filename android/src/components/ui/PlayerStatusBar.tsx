@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import { TokenPool } from '../../types/game';
+import { TokenPool, PlayerWallet } from '../../types/game';
+import { formatWalletSummary } from '../../utils/wallet';
 
 interface PlayerStatusBarProps {
   activePlayer: 1 | 2;
@@ -11,6 +12,7 @@ interface PlayerStatusBarProps {
   themeColors: any;
   player1Tokens: TokenPool;
   player2Tokens: TokenPool;
+  matchEarnings?: PlayerWallet;
 }
 
 export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
@@ -23,6 +25,7 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
   themeColors,
   player1Tokens,
   player2Tokens,
+  matchEarnings,
 }) => {
   const formatDiff = (diff: string) => {
     return diff.charAt(0).toUpperCase() + diff.slice(1);
@@ -100,6 +103,15 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
           </View>
         </View>
       </View>
+
+      {matchEarnings && (matchEarnings.gold > 0 || matchEarnings.silver > 0 || matchEarnings.money > 0) && (
+        <View style={styles.earningsRow}>
+          <Text style={[styles.earningsLabel, { color: themeColors.textSecondary }]}>Treasure:</Text>
+          <Text style={[styles.earningsValue, { color: themeColors.accent }]}>
+            {formatWalletSummary(matchEarnings)}
+          </Text>
+        </View>
+      )}
 
       {/* Turn Indicator Banner */}
       <View style={styles.statusBanner}>
@@ -228,6 +240,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginRight: 8,
+  },
+  earningsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    gap: 6,
+  },
+  earningsLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  earningsValue: {
+    fontSize: 11,
+    fontWeight: '800',
   },
   tokenBadgesContainer: {
     flexDirection: 'row',

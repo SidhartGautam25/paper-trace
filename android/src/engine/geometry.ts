@@ -56,6 +56,39 @@ export function getDestination(origin: Point, direction: Direction, steps: numbe
   };
 }
 
+/** Grid points visited along a straight 8-way move (excludes start, includes end). */
+export function getCellsAlongPath(start: Point, end: Point): Point[] {
+  const cells: Point[] = [];
+  const dr = Math.sign(end.r - start.r);
+  const dc = Math.sign(end.c - start.c);
+  let r = start.r;
+  let c = start.c;
+
+  while (r !== end.r || c !== end.c) {
+    r += dr;
+    c += dc;
+    cells.push({ r, c });
+  }
+
+  return cells;
+}
+
+/**
+ * Rotation (degrees) for dot shapes that point "up" (-Y) by default.
+ * Uses the most recent move segment; falls back to facing the opponent.
+ */
+export function getMovementRotationDegrees(dot: { player: 1 | 2; history: { start: Point; end: Point }[] }): number {
+  const lastSegment = dot.history.length > 0 ? dot.history[dot.history.length - 1] : null;
+  if (lastSegment) {
+    const dr = lastSegment.end.r - lastSegment.start.r;
+    const dc = lastSegment.end.c - lastSegment.start.c;
+    if (dr !== 0 || dc !== 0) {
+      return (Math.atan2(dr, dc) * 180) / Math.PI + 90;
+    }
+  }
+  return dot.player === 1 ? 0 : 180;
+}
+
 /**
  * Validates whether a point is within the board's grid boundaries.
  */

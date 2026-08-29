@@ -1,6 +1,8 @@
 import { GameState, Dot, TokenPool, Direction, Point } from '../types/game';
 import { getDestination, isWithinBounds } from './geometry';
+import { getEffectiveTokenPool } from '../utils/tokenPool';
 import { executeShot } from './paperEngine';
+import { getRequiredDotIdForPlayer, canLandAt } from './boardFeatureEngine';
 
 export interface AIMove {
   dotId: string;
@@ -14,8 +16,18 @@ export interface AIMove {
 export function getLegalMoves(gameState: GameState): AIMove[] {
   const legalMoves: AIMove[] = [];
   const activePlayer = gameState.activePlayer;
-  const activePool = activePlayer === 1 ? gameState.player1Tokens : gameState.player2Tokens;
+  const activePool = getEffectiveTokenPool(
+    activePlayer === 1 ? gameState.player1Tokens : gameState.player2Tokens
+  );
   const activeDots = gameState.dots.filter((d) => d.player === activePlayer && d.isAlive);
+  const requiredDotId = getRequiredDotIdForPlayer(
+    activePlayer,
+    gameState.forcedMoveByPlayer,
+    gameState.dots
+  );
+  const eligibleDots = requiredDotId
+    ? activeDots.filter((d) => d.id === requiredDotId)
+    : activeDots;
 
   // Get token values that have remaining stock
   const availableTokens = Object.keys(activePool)
@@ -24,11 +36,14 @@ export function getLegalMoves(gameState: GameState): AIMove[] {
 
   const directions: Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
-  for (const dot of activeDots) {
+  for (const dot of eligibleDots) {
     for (const token of availableTokens) {
       for (const dir of directions) {
         const dest = getDestination(dot.currentPos, dir, token);
-        if (isWithinBounds(dest)) {
+        if (
+          isWithinBounds(dest) &&
+          canLandAt(dest, dot.id, gameState.dots, gameState.boardFeatures)
+        ) {
           legalMoves.push({
             dotId: dot.id,
             tokenValue: token,
@@ -81,6 +96,10 @@ function scoreMove(move: AIMove, gameState: GameState, difficulty: 'medium' | 'h
     activePlayer: opponent,
     winner: result.winner,
     historyLogs: [],
+    currencyRegions: result.currencyRegions,
+    matchEarnings: result.matchEarnings,
+    boardFeatures: gameState.boardFeatures,
+    forcedMoveByPlayer: result.forcedMoveByPlayer,
   };
 
   const opponentLegalMoves = getLegalMoves(opponentResultState);

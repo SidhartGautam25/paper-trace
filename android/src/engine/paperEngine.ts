@@ -1,26 +1,155 @@
-import { GameState, Dot, TokenPool, LineSegment, Direction } from '../types/game';
+import { GameState, Dot, TokenPool, LineSegment, Direction, PlayerWallet, CurrencyRegion, Point } from '../types/game';
 import { EngineResult } from '../types/engine';
+import { MoveNotification } from '../types/notifications';
 import { GRID_CONFIG } from '../constants/board';
+import {
+  getMaxTrailLength,
+  getConnectedTrailHistory,
+  isTrapPointForOpponent,
+  doesTrailCutKillDot,
+} from './characterEngine';
 import {
   getDestination,
   isWithinBounds,
   areSegmentsIntersecting,
   pointsEqual,
+  getCellsAlongPath,
 } from './geometry';
+import { EMPTY_WALLET, mergeWallets } from '../utils/wallet';
+import {
+  applyFeaturesOnMove,
+  canEliminateDot,
+  canLandAt,
+  clearForcedMoveAfterTurn,
+  validateForcedMove,
+  validateLandingPosition,
+} from './boardFeatureEngine';
+import { getMoveTouchedPoints, isSameRegionOrigin, dotLandsOnRegion } from '../types/gridRegion';
+import { getFeaturesAtLanding } from '../features/boardFeatureQueries';
+import { refillTokenPoolIfEmpty, getEffectiveTokenPool } from '../utils/tokenPool';
+import { BOARD_FEATURE_REGISTRY } from '../features/boardFeatureRegistry';
+import { BoardFeatureInstance } from '../types/boardFeatures';
 
-/**
- * Generates a unique ID for a line segment.
- */
 function generateSegmentId(dotId: string): string {
   const timestamp = Date.now();
   const randomSuffix = Math.random().toString(36).substring(2, 6);
   return `${dotId}_line_${timestamp}_${randomSuffix}`;
 }
 
-/**
- * Executes a player move (shot).
- * Returns the new game state snapshot wrapped in an EngineResult.
- */
+function getMaxTrailForDot(dot: Dot): number {
+  return getMaxTrailLength(dot);
+}
+
+function emptyNotifications(): MoveNotification[] {
+  return [];
+}
+
+function failResult(gameState: GameState, error: string): EngineResult {
+  return {
+    success: false,
+    error,
+    dots: gameState.dots,
+    player1Tokens: gameState.player1Tokens,
+    player2Tokens: gameState.player2Tokens,
+    activePlayer: gameState.activePlayer,
+    winner: gameState.winner,
+    prunedLinesCount: 0,
+    killedDots: [],
+    currencyRegions: gameState.currencyRegions,
+    matchEarnings: gameState.matchEarnings,
+    currencyCollectedThisMove: EMPTY_WALLET,
+    forcedMoveByPlayer: gameState.forcedMoveByPlayer,
+    featureMessages: [],
+    notifications: emptyNotifications(),
+  };
+}
+
+function collectCurrencyRegions(
+  landingPos: Point,
+  regions: CurrencyRegion[],
+  collectorPlayer: 1 | 2,
+  boardFeatures: BoardFeatureInstance[]
+): {
+  regions: CurrencyRegion[];
+  earned: PlayerWallet;
+  notifications: MoveNotification[];
+  claimedByBot: string[];
+} {
+  const earned: PlayerWallet = { ...EMPTY_WALLET };
+  const notifications: MoveNotification[] = [];
+  const claimedByBot: string[] = [];
+
+  const updated = regions.map((region) => {
+    if (region.collected) return region;
+    if (!dotLandsOnRegion(landingPos, region.origin)) return region;
+    if (boardFeatures.some((feature) => isSameRegionOrigin(feature.origin, region.origin))) {
+      return region;
+    }
+
+    if (collectorPlayer === 1) {
+      if (region.type === 'gold') earned.gold += region.value;
+      else if (region.type === 'silver') earned.silver += region.value;
+      else earned.money += region.value;
+
+      const label = region.type === 'gold' ? 'Gold' : region.type === 'silver' ? 'Silver' : 'Coins';
+      notifications.push({
+        id: `cur_${region.id}_${Date.now()}`,
+        kind: region.type,
+        title: `${label} Region Captured!`,
+        body: `You landed on a ${label.toLowerCase()} zone and earned +${region.value}.`,
+      });
+    } else {
+      claimedByBot.push(region.id);
+    }
+
+    return { ...region, collected: true };
+  });
+
+  return { regions: updated, earned, notifications, claimedByBot };
+}
+
+function buildFeatureNotifications(
+  activePlayer: 1 | 2,
+  touchedFeatures: BoardFeatureInstance[],
+  featureMessages: string[]
+): MoveNotification[] {
+  if (activePlayer !== 1) return [];
+
+  const notifs: MoveNotification[] = [];
+  const seen = new Set<string>();
+
+  for (const feature of touchedFeatures) {
+    if (seen.has(feature.typeId)) continue;
+    seen.add(feature.typeId);
+    const def = BOARD_FEATURE_REGISTRY[feature.typeId];
+
+    if (feature.typeId === 'shield_zone') {
+      notifs.push({
+        id: `feat_${feature.id}`,
+        kind: 'shield_zone',
+        title: 'Sanctuary Region',
+        body: 'Sanctuary: your dot cannot be cut here. Only one dot may occupy the four-dot region.',
+      });
+    } else if (feature.typeId === 'trail_erase') {
+      notifs.push({
+        id: `feat_${feature.id}`,
+        kind: 'trail_erase',
+        title: 'Trail Purge Region',
+        body: featureMessages.find((m) => m.includes('Trail Purge')) ?? def.description,
+      });
+    } else if (feature.typeId === 'forced_lock') {
+      notifs.push({
+        id: `feat_${feature.id}`,
+        kind: 'forced_lock',
+        title: 'Lock Region',
+        body: featureMessages.find((m) => m.includes('Lock')) ?? def.description,
+      });
+    }
+  }
+
+  return notifs;
+}
+
 export function executeShot(
   movingDotId: string,
   direction: Direction,
@@ -29,38 +158,48 @@ export function executeShot(
 ): EngineResult {
   const { dots, player1Tokens, player2Tokens, activePlayer } = gameState;
 
-  // 1. Locate the moving dot
+  const forcedError = validateForcedMove(movingDotId, activePlayer, gameState);
+  if (forcedError) {
+    return failResult(gameState, forcedError);
+  }
+
   const movingDotIndex = dots.findIndex((d) => d.id === movingDotId);
   if (movingDotIndex === -1) {
-    return { success: false, error: `Dot with ID "${movingDotId}" not found.`, dots, player1Tokens, player2Tokens, activePlayer, winner: gameState.winner, prunedLinesCount: 0, killedDots: [] };
+    return failResult(gameState, `Dot with ID "${movingDotId}" not found.`);
   }
 
   const movingDot = dots[movingDotIndex];
 
-  // 2. Validate dot state
   if (!movingDot.isAlive) {
-    return { success: false, error: 'Cannot move a destroyed dot.', dots, player1Tokens, player2Tokens, activePlayer, winner: gameState.winner, prunedLinesCount: 0, killedDots: [] };
+    return failResult(gameState, 'Cannot move a destroyed dot.');
   }
 
   if (movingDot.player !== activePlayer) {
-    return { success: false, error: 'Cannot move opponent\'s dot.', dots, player1Tokens, player2Tokens, activePlayer, winner: gameState.winner, prunedLinesCount: 0, killedDots: [] };
+    return failResult(gameState, "Cannot move opponent's dot.");
   }
 
-  // 3. Validate token availability
-  const activePool = activePlayer === 1 ? player1Tokens : player2Tokens;
+  const activePool = getEffectiveTokenPool(
+    activePlayer === 1 ? player1Tokens : player2Tokens
+  );
   if (!activePool[tokenValue] || activePool[tokenValue] <= 0) {
-    return { success: false, error: `Token value ${tokenValue} is not available in your pool.`, dots, player1Tokens, player2Tokens, activePlayer, winner: gameState.winner, prunedLinesCount: 0, killedDots: [] };
+    return failResult(gameState, `Token value ${tokenValue} is not available in your pool.`);
   }
 
-  // 4. Calculate destination and check boundary bounds
   const startPos = movingDot.currentPos;
   const endPos = getDestination(startPos, direction, tokenValue);
 
   if (!isWithinBounds(endPos)) {
-    return { success: false, error: 'Shot exceeds grid boundaries.', dots, player1Tokens, player2Tokens, activePlayer, winner: gameState.winner, prunedLinesCount: 0, killedDots: [] };
+    return failResult(gameState, 'Shot exceeds grid boundaries.');
   }
 
-  // Create the new line segment
+  const landingError = validateLandingPosition(endPos, movingDotId, gameState);
+  if (landingError) {
+    return failResult(gameState, landingError);
+  }
+
+  const pathCells = getCellsAlongPath(startPos, endPos);
+  const touchedPoints = getMoveTouchedPoints(startPos, pathCells);
+
   const newSegmentId = generateSegmentId(movingDotId);
   const newSegment: LineSegment = {
     id: newSegmentId,
@@ -68,7 +207,6 @@ export function executeShot(
     end: endPos,
   };
 
-  // Clone structures for immutability
   const updatedDots: Dot[] = dots.map((d) => ({
     ...d,
     currentPos: { ...d.currentPos },
@@ -82,27 +220,21 @@ export function executeShot(
   const killedDots: string[] = [];
   let prunedLinesCount = 0;
 
-  // 5. Collision Checks
-  // A. Direct Hit Check: If we land directly on an enemy dot's current coordinates
   updatedDots.forEach((d) => {
     if (d.player !== activePlayer && d.isAlive) {
-      if (pointsEqual(endPos, d.currentPos)) {
+      if (pointsEqual(endPos, d.currentPos) && canEliminateDot(d, gameState.boardFeatures)) {
         d.isAlive = false;
-        d.history = []; // Clear lines of dead dots
+        d.history = [];
         killedDots.push(d.id);
       }
     }
   });
 
-  // B. Enemy Line Cut Check: If our new segment intersects any active enemy line segments
   updatedDots.forEach((d) => {
     if (d.player !== activePlayer && d.isAlive) {
-      const hasIntersection = d.history.some((seg) =>
-        areSegmentsIntersecting(newSegment.start, newSegment.end, seg.start, seg.end, false)
-      );
-      if (hasIntersection) {
+      if (doesTrailCutKillDot(d, newSegment.start, newSegment.end, gameState.boardFeatures)) {
         d.isAlive = false;
-        d.history = []; // Clear lines of dead dots
+        d.history = [];
         if (!killedDots.includes(d.id)) {
           killedDots.push(d.id);
         }
@@ -110,49 +242,125 @@ export function executeShot(
     }
   });
 
-  // C. Self-Cancellation (Friendly Line Pruning) Check:
-  // If our new segment intersects any of our own (friendly) active line segments,
-  // we erase those intersected line segments.
   updatedDots.forEach((d) => {
     if (d.player === activePlayer && d.isAlive) {
       const initialHistoryLength = d.history.length;
       d.history = d.history.filter((seg) => {
-        // If it intersects, prune it (exclude from history)
         const intersects = areSegmentsIntersecting(
           newSegment.start,
           newSegment.end,
           seg.start,
           seg.end,
-          true // ignoreNewStartJoint: don't prune segments connecting at the new shot's origin
+          true
         );
         return !intersects;
       });
+      d.history = getConnectedTrailHistory(d.history, d.currentPos);
       prunedLinesCount += initialHistoryLength - d.history.length;
     }
   });
 
-  // 6. Update the moving dot itself
   const finalMovingDot = updatedDots.find((d) => d.id === movingDotId)!;
   finalMovingDot.currentPos = endPos;
   finalMovingDot.history.push(newSegment);
 
-  // FIFO history truncation: max 3 lines
-  if (finalMovingDot.history.length > GRID_CONFIG.MAX_LINE_HISTORY) {
+  const maxTrail = getMaxTrailForDot(finalMovingDot);
+  while (finalMovingDot.history.length > maxTrail) {
     finalMovingDot.history.shift();
   }
 
-  // 7. Decrement the token value from the active player's inventory
-  const updatedPlayer1Tokens = { ...player1Tokens };
-  const updatedPlayer2Tokens = { ...player2Tokens };
+  let diedOnReaperTrap = false;
+  if (
+    finalMovingDot.isAlive &&
+    isTrapPointForOpponent(endPos, updatedDots, activePlayer)
+  ) {
+    finalMovingDot.isAlive = false;
+    finalMovingDot.history = [];
+    if (!killedDots.includes(movingDotId)) {
+      killedDots.push(movingDotId);
+    }
+    diedOnReaperTrap = true;
+  }
+
+  const landedFeatures = getFeaturesAtLanding(endPos, gameState.boardFeatures);
+
+  const featureResult = applyFeaturesOnMove({
+    gameState,
+    movingDotId,
+    movingDot: finalMovingDot,
+    endPos,
+    touchedPoints,
+    newSegment,
+    updatedDots,
+    activePlayer,
+  });
+
+  let resolvedDots = featureResult.dots ?? updatedDots;
+  let forcedMoveByPlayer = featureResult.forcedMoveByPlayer
+    ? { ...gameState.forcedMoveByPlayer, ...featureResult.forcedMoveByPlayer }
+    : { ...gameState.forcedMoveByPlayer };
+
+  let featureMessages = featureResult.featureMessages ?? [];
+
+  const {
+    regions: updatedRegions,
+    earned,
+    notifications: currencyNotifs,
+    claimedByBot,
+  } = collectCurrencyRegions(
+    endPos,
+    gameState.currencyRegions,
+    activePlayer,
+    gameState.boardFeatures
+  );
+
+  for (const id of claimedByBot) {
+    const region = gameState.currencyRegions.find((r) => r.id === id);
+    if (!region) continue;
+    const label = region.type === 'gold' ? 'gold' : region.type === 'silver' ? 'silver' : 'coin';
+    featureMessages.push(`Bot captured ${label} treasure — region cleared`);
+  }
+
+  const featureNotifs = buildFeatureNotifications(activePlayer, landedFeatures, featureMessages);
+  const trapNotifs: MoveNotification[] =
+    diedOnReaperTrap && activePlayer === 1
+      ? [
+          {
+            id: `trap_${movingDotId}_${Date.now()}`,
+            kind: 'reaper_trap',
+            title: 'Reaper Trap!',
+            body: 'You stepped on a lethal trap point and were eliminated.',
+          },
+        ]
+      : [];
+  const notifications = [...currencyNotifs, ...featureNotifs, ...trapNotifs];
+  if (diedOnReaperTrap) {
+    featureMessages = [
+      ...featureMessages,
+      activePlayer === 1 ? 'Reaper trap triggered!' : 'Bot fell into a Reaper trap!',
+    ];
+  }
+  const matchEarnings = mergeWallets(gameState.matchEarnings, earned);
+
+  let updatedPlayer1Tokens = { ...player1Tokens };
+  let updatedPlayer2Tokens = { ...player2Tokens };
   if (activePlayer === 1) {
     updatedPlayer1Tokens[tokenValue] = Math.max(0, updatedPlayer1Tokens[tokenValue] - 1);
   } else {
     updatedPlayer2Tokens[tokenValue] = Math.max(0, updatedPlayer2Tokens[tokenValue] - 1);
   }
 
-  // 8. Determine victory conditions
-  const p1AliveCount = updatedDots.filter((d) => d.player === 1 && d.isAlive).length;
-  const p2AliveCount = updatedDots.filter((d) => d.player === 2 && d.isAlive).length;
+  const nextPlayer = activePlayer === 1 ? 2 : 1;
+  if (nextPlayer === 1) {
+    updatedPlayer1Tokens = refillTokenPoolIfEmpty(updatedPlayer1Tokens);
+  } else {
+    updatedPlayer2Tokens = refillTokenPoolIfEmpty(updatedPlayer2Tokens);
+  }
+
+  forcedMoveByPlayer = clearForcedMoveAfterTurn(activePlayer, forcedMoveByPlayer);
+
+  const p1AliveCount = resolvedDots.filter((d) => d.player === 1 && d.isAlive).length;
+  const p2AliveCount = resolvedDots.filter((d) => d.player === 2 && d.isAlive).length;
 
   let winner: 1 | 2 | null = null;
   if (p2AliveCount === 0 && p1AliveCount > 0) {
@@ -162,38 +370,45 @@ export function executeShot(
   } else if (p1AliveCount === 0 && p2AliveCount === 0) {
     winner = activePlayer;
   } else {
-    // If both players have dots alive, check if the next player has any valid moves left.
-    // If the next player runs out of options, the game ends immediately and we resolve
-    // the winner using the tie-breaker scores.
-    const nextPlayer = activePlayer === 1 ? 2 : 1;
-    const nextPlayerPool = nextPlayer === 1 ? updatedPlayer1Tokens : updatedPlayer2Tokens;
-    if (!hasAnyValidMoves(nextPlayer, updatedDots, nextPlayerPool)) {
-      winner = resolveEndGameWinner(updatedDots);
+    const nextPlayerPool = getEffectiveTokenPool(
+      nextPlayer === 1 ? updatedPlayer1Tokens : updatedPlayer2Tokens
+    );
+    if (!hasAnyValidMoves(nextPlayer, resolvedDots, nextPlayerPool, gameState.boardFeatures)) {
+      winner = resolveEndGameWinner(resolvedDots);
     }
   }
 
-  // 9. Swap Active Player
-  const nextPlayer = activePlayer === 1 ? 2 : 1;
-
   return {
     success: true,
-    dots: updatedDots,
+    dots: resolvedDots,
     player1Tokens: updatedPlayer1Tokens,
     player2Tokens: updatedPlayer2Tokens,
-    activePlayer: winner ? activePlayer : nextPlayer, // Keep active player if game ended
+    activePlayer: winner ? activePlayer : nextPlayer,
     winner,
     prunedLinesCount,
     killedDots,
+    currencyRegions: updatedRegions,
+    matchEarnings,
+    currencyCollectedThisMove: earned,
+    forcedMoveByPlayer,
+    featureMessages,
+    notifications,
   };
 }
 
-export function hasAnyValidMoves(player: 1 | 2, dots: Dot[], tokens: TokenPool): boolean {
+export function hasAnyValidMoves(
+  player: 1 | 2,
+  dots: Dot[],
+  tokens: TokenPool,
+  boardFeatures: GameState['boardFeatures']
+): boolean {
   const aliveDots = dots.filter((d) => d.player === player && d.isAlive);
   if (aliveDots.length === 0) return false;
 
-  const availableTokens = Object.keys(tokens)
+  const pool = getEffectiveTokenPool(tokens);
+  const availableTokens = Object.keys(pool)
     .map(Number)
-    .filter((val) => tokens[val] > 0);
+    .filter((val) => pool[val] > 0);
   if (availableTokens.length === 0) return false;
 
   const directions: Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -201,8 +416,8 @@ export function hasAnyValidMoves(player: 1 | 2, dots: Dot[], tokens: TokenPool):
   for (const dot of aliveDots) {
     for (const token of availableTokens) {
       for (const dir of directions) {
-        const endPos = getDestination(dot.currentPos, dir, token);
-        if (isWithinBounds(endPos)) {
+        const dest = getDestination(dot.currentPos, dir, token);
+        if (isWithinBounds(dest) && canLandAt(dest, dot.id, dots, boardFeatures)) {
           return true;
         }
       }
@@ -218,7 +433,6 @@ export function resolveEndGameWinner(dots: Dot[]): 1 | 2 {
   if (p1Alive.length > p2Alive.length) return 1;
   if (p2Alive.length > p1Alive.length) return 2;
 
-  // Symmetrical base-distance tie-breaker score calculation
   const maxRow = GRID_CONFIG.ROWS - 1;
   const p1Score = p1Alive.reduce((sum, d) => sum + (maxRow - d.currentPos.r), 0);
   const p2Score = p2Alive.reduce((sum, d) => sum + d.currentPos.r, 0);
@@ -226,5 +440,5 @@ export function resolveEndGameWinner(dots: Dot[]): 1 | 2 {
   if (p1Score > p2Score) return 1;
   if (p2Score > p1Score) return 2;
 
-  return 1; // Default fallback to Player 1 if everything is perfectly tied
+  return 1;
 }

@@ -18,6 +18,10 @@ import { GridCanvas } from '../components/canvas/GridCanvas';
 import { TokenPicker } from '../components/ui/TokenPicker';
 import { DirectionPad } from '../components/ui/DirectionPad';
 import { PlayerStatusBar } from '../components/ui/PlayerStatusBar';
+import { parseCharacterLoadout } from '../constants/characters';
+import { TreasuryBar } from '../components/ui/TreasuryBar';
+import { CollectionPopup } from '../components/ui/CollectionPopup';
+import { formatWalletSummary } from '../utils/wallet';
 
 export default function GameScreen() {
   const router = useRouter();
@@ -30,8 +34,7 @@ export default function GameScreen() {
     p1LineColor?: string;
     p2DotColor?: string;
     p2LineColor?: string;
-    p1DotShape?: string;
-    p2DotShape?: string;
+    characters?: string;
   }>();
   const insets = useSafeAreaInsets();
   
@@ -54,16 +57,9 @@ export default function GameScreen() {
   const p2DotColor = params.p2DotColor || themeColors.p2Shades[0];
   const p2LineColor = params.p2LineColor || themeColors.p2Shades[0];
 
-  // Custom Shapes
-  const p1DotShape = (params.p1DotShape === 'circle' || params.p1DotShape === 'arrow' || params.p1DotShape === 'hexagon' || params.p1DotShape === 'diamond' || params.p1DotShape === 'square' || params.p1DotShape === 'star')
-    ? params.p1DotShape
-    : 'circle';
-  const p2DotShape = (params.p2DotShape === 'circle' || params.p2DotShape === 'arrow' || params.p2DotShape === 'hexagon' || params.p2DotShape === 'diamond' || params.p2DotShape === 'square' || params.p2DotShape === 'star')
-    ? params.p2DotShape
-    : 'circle';
-
   // Custom Lines
   const selectedLines = params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow'];
+  const characterLoadout = parseCharacterLoadout(params.characters);
 
   // Layout Measurement state for percentage-wise dynamic allocation
   const [boardLayout, setBoardLayout] = useState<{ width: number; height: number } | null>(null);
@@ -76,16 +72,22 @@ export default function GameScreen() {
     activePlayer,
     winner,
     historyLogs,
+    currencyRegions,
+    boardFeatures,
+    matchEarnings,
     selectedDotId,
     selectedToken,
     selectedDirection,
     isAiThinking,
+    isBotBlocked,
+    activeNotification,
+    dismissNotification,
     selectDot,
     selectToken,
     selectDirection,
     executeMove,
     resetGame,
-  } = usePaperSession(difficulty);
+  } = usePaperSession(difficulty, characterLoadout);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -157,7 +159,9 @@ export default function GameScreen() {
             }}
             player1Tokens={player1Tokens}
             player2Tokens={player2Tokens}
+            matchEarnings={matchEarnings}
           />
+          <TreasuryBar matchEarnings={matchEarnings} themeColors={themeColors} />
         </View>
 
         {/* Board Canvas Section with dynamic measurement */}
@@ -190,9 +194,10 @@ export default function GameScreen() {
               p1LineColor={p1LineColor}
               p2DotColor={p2DotColor}
               p2LineColor={p2LineColor}
-              p1DotShape={p1DotShape}
-              p2DotShape={p2DotShape}
               selectedLines={selectedLines}
+              characterLoadout={characterLoadout}
+              currencyRegions={currencyRegions}
+              boardFeatures={boardFeatures}
               maxHeight={boardLayout.height}
               maxWidth={boardLayout.width}
             />
@@ -245,6 +250,12 @@ export default function GameScreen() {
         </View>
       </View>
 
+      <CollectionPopup
+        notification={activeNotification}
+        themeColors={themeColors}
+        onDismiss={dismissNotification}
+      />
+
       {/* Winner Overlay Popup */}
       {winner && (
         <View style={[StyleSheet.absoluteFill, styles.overlayContainer]}>
@@ -270,6 +281,10 @@ export default function GameScreen() {
             </Text>
 
             <View style={[styles.overlayScores, { borderColor: themeColors.border }]}>
+              <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Treasure Collected</Text>
+              <Text style={[styles.scoreValue, { color: themeColors.textPrimary, textAlign: 'center', marginBottom: 12 }]}>
+                {formatWalletSummary(matchEarnings)}
+              </Text>
               <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Base Distance Scores</Text>
               <View style={styles.scoreRow}>
                 <Text style={[styles.scoreLabel, { color: themeColors.p1Shades[0] }]}>You:</Text>

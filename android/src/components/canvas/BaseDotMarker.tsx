@@ -2,14 +2,15 @@ import React, { useEffect } from 'react';
 import { Circle, G, Path, Rect, Line } from 'react-native-svg';
 import Animated, {
   useAnimatedProps,
-  useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
   withSequence,
 } from 'react-native-reanimated';
-import { Platform } from 'react-native';
 import { Dot } from '../../types/game';
+import { BoardFeatureInstance } from '../../types/boardFeatures';
+import { getMovementRotationDegrees } from '../../engine/geometry';
+import { isDotProtectedAtPosition } from '../../features/boardFeatureQueries';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -25,6 +26,7 @@ interface BaseDotMarkerProps {
   killEffect: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer' | 'burn' | 'firecracker';
   themeColors: any;
   shape?: 'circle' | 'arrow' | 'hexagon' | 'diamond' | 'square' | 'star';
+  boardFeatures?: BoardFeatureInstance[];
 }
 
 export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
@@ -37,11 +39,14 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   killEffect,
   themeColors,
   shape = 'circle',
+  boardFeatures = [],
 }) => {
   if (!dot || !dot.currentPos) return null;
 
   const cx = dot.currentPos.c * cellSize + offsetX;
   const cy = dot.currentPos.r * cellSize + offsetY;
+  const facingRotation = getMovementRotationDegrees(dot);
+  const isShielded = dot.isAlive && isDotProtectedAtPosition(dot.currentPos, boardFeatures);
 
   const pulse = useSharedValue(1.0);
   const aliveVal = useSharedValue(dot.isAlive ? 1.0 : 0.0);
@@ -71,7 +76,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
     }
   }, [dot.isAlive]);
 
-  const shapeStyle = useAnimatedStyle(() => {
+  const shapeProps = useAnimatedProps(() => {
     const val = aliveVal.value;
     let scale = val;
     let opacity = val;
@@ -84,13 +89,10 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
         scale = 0;
       }
     }
+    const s = pulse.value * scale;
     return {
-      transform: [
-        { translateX: cx },
-        { translateY: cy },
-        { scale: pulse.value * scale },
-      ],
-      opacity: opacity,
+      transform: `translate(${cx}, ${cy}) rotate(${facingRotation}) scale(${s})`,
+      opacity,
     };
   });
 
@@ -152,10 +154,10 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
 
   // Effect 4: Monster Chomper props
   // Effect 4: Monster Chomper props
-  const topJawStyle = useAnimatedStyle(() => {
+  const topJawProps = useAnimatedProps(() => {
     const val = aliveVal.value;
     const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
-    const ty = -28 * progress; // opens up to -28px (massive!)
+    const ty = -28 * progress;
     let opacity = 0;
     if (val >= 0.4) {
       opacity = (1 - val) / 0.6;
@@ -163,18 +165,15 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      transform: [
-        { translateX: cx },
-        { translateY: cy + ty }
-      ],
+      transform: `translate(${cx}, ${cy + ty})`,
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
 
-  const bottomJawStyle = useAnimatedStyle(() => {
+  const bottomJawProps = useAnimatedProps(() => {
     const val = aliveVal.value;
     const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
-    const ty = 28 * progress; // opens down to 28px
+    const ty = 28 * progress;
     let opacity = 0;
     if (val >= 0.4) {
       opacity = (1 - val) / 0.6;
@@ -182,22 +181,18 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      transform: [
-        { translateX: cx },
-        { translateY: cy + ty }
-      ],
+      transform: `translate(${cx}, ${cy + ty})`,
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
 
-  // Effect 5: Hammer Smash props
-  const hammerStyle = useAnimatedStyle(() => {
+  const hammerProps = useAnimatedProps(() => {
     const val = aliveVal.value;
     const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
     const rotation = -70 * progress;
     const tx = cx + 60 * progress;
     const ty = cy - 70 * progress;
-    
+
     let opacity = 0;
     if (val >= 0.4) {
       opacity = (1 - val) / 0.6;
@@ -205,11 +200,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      transform: [
-        { translateX: tx },
-        { translateY: ty },
-        { rotate: `${rotation}deg` }
-      ],
+      transform: `translate(${tx}, ${ty}) rotate(${rotation})`,
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
@@ -244,51 +235,39 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
   const shard6Props = shardProps(300, 32);
 
   // Effect 6: Incinerating Flame (rising, scaling, fading flames)
-  const flameRedStyle = useAnimatedStyle(() => {
+  const flameRedProps = useAnimatedProps(() => {
     const val = aliveVal.value;
     const progress = 1.0 - val;
     const scale = progress * 1.5;
     const ty = -18 * progress;
-    const opacity = progress < 0.85 ? 1.0 - (progress / 0.85) : 0;
+    const opacity = progress < 0.85 ? 1.0 - progress / 0.85 : 0;
     return {
-      transform: [
-        { translateX: cx },
-        { translateY: cy + ty },
-        { scale: scale },
-      ],
-      opacity: opacity,
+      transform: `translate(${cx}, ${cy + ty}) scale(${scale})`,
+      opacity,
     };
   });
 
-  const flameOrangeStyle = useAnimatedStyle(() => {
+  const flameOrangeProps = useAnimatedProps(() => {
     const val = aliveVal.value;
     const progress = 1.0 - val;
     const scale = progress * 1.25;
     const ty = -24 * progress;
-    const opacity = progress < 0.75 ? 1.0 - (progress / 0.75) : 0;
+    const opacity = progress < 0.75 ? 1.0 - progress / 0.75 : 0;
     return {
-      transform: [
-        { translateX: cx },
-        { translateY: cy + ty },
-        { scale: scale },
-      ],
-      opacity: opacity,
+      transform: `translate(${cx}, ${cy + ty}) scale(${scale})`,
+      opacity,
     };
   });
 
-  const flameYellowStyle = useAnimatedStyle(() => {
+  const flameYellowProps = useAnimatedProps(() => {
     const val = aliveVal.value;
     const progress = 1.0 - val;
     const scale = progress * 0.95;
     const ty = -30 * progress;
-    const opacity = progress < 0.65 ? 1.0 - (progress / 0.65) : 0;
+    const opacity = progress < 0.65 ? 1.0 - progress / 0.65 : 0;
     return {
-      transform: [
-        { translateX: cx },
-        { translateY: cy + ty },
-        { scale: scale },
-      ],
-      opacity: opacity,
+      transform: `translate(${cx}, ${cy + ty}) scale(${scale})`,
+      opacity,
     };
   });
 
@@ -324,8 +303,8 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       case 'arrow':
         return (
           <G>
-            <Path d="M 0,-9 L 8,7 L 0,3 L -8,7 Z" fill={color} />
-            <Path d="M 0,-4 L 3,3 L 0,1 L -3,3 Z" fill="#FFFFFF" opacity={0.65} />
+            <Path d="M 0,-7 L 6.5,5.5 L 0,2.5 L -6.5,5.5 Z" fill={color} />
+            <Path d="M 0,-3.5 L 2.5,2.5 L 0,1 L -2.5,2.5 Z" fill="#FFFFFF" opacity={0.65} />
           </G>
         );
       case 'hexagon':
@@ -382,9 +361,21 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
         />
       )}
 
+      {isShielded && (
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={16}
+          fill="none"
+          stroke="#38BDF8"
+          strokeWidth={2}
+          strokeOpacity={0.7}
+          strokeDasharray="4, 2"
+        />
+      )}
+
       {/* Core Shape (Animated Transform, Pulse & Fade) */}
-      {/* @ts-ignore */}
-      <AnimatedG style={shapeStyle}>
+      <AnimatedG animatedProps={shapeProps}>
         {renderShape()}
       </AnimatedG>
 
@@ -441,8 +432,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       {killEffect === 'monster' && (
         <G>
           {/* Menacing Cyber Beast Top Jaw */}
-          {/* @ts-ignore */}
-          <AnimatedG style={topJawStyle}>
+          <AnimatedG animatedProps={topJawProps}>
             <Path
               d="M -28,-4 Q 0,-30 28,-4 L 28,0 L 18,-14 L 10,0 L 0,-16 L -10,0 L -18,-14 L -28,0 Z"
               fill="#0F172A"
@@ -455,8 +445,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
           </AnimatedG>
 
           {/* Menacing Cyber Beast Bottom Jaw */}
-          {/* @ts-ignore */}
-          <AnimatedG style={bottomJawStyle}>
+          <AnimatedG animatedProps={bottomJawProps}>
             <Path
               d="M -28,4 Q 0,30 28,4 L 28,0 L 18,14 L 10,0 L 0,16 L -10,0 L -18,14 L -28,0 Z"
               fill="#0F172A"
@@ -470,8 +459,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       {killEffect === 'hammer' && (
         <G>
           {/* Cybernetic Energy Warhammer */}
-          {/* @ts-ignore */}
-          <AnimatedG style={hammerStyle}>
+          <AnimatedG animatedProps={hammerProps}>
             {/* Dark carbon-fiber handle */}
             <Rect
               x={-3}
@@ -534,24 +522,21 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       {killEffect === 'burn' && (
         <G>
           {/* Flame Red */}
-          {/* @ts-ignore */}
-          <AnimatedG style={flameRedStyle}>
+          <AnimatedG animatedProps={flameRedProps}>
             <Path
               d="M 0,-15 Q -10,0 0,10 Q 10,0 0,-15 Z"
               fill="#EF4444"
             />
           </AnimatedG>
           {/* Flame Orange */}
-          {/* @ts-ignore */}
-          <AnimatedG style={flameOrangeStyle}>
+          <AnimatedG animatedProps={flameOrangeProps}>
             <Path
               d="M 0,-12 Q -8,0 0,8 Q 8,0 0,-12 Z"
               fill="#F97316"
             />
           </AnimatedG>
           {/* Flame Yellow */}
-          {/* @ts-ignore */}
-          <AnimatedG style={flameYellowStyle}>
+          <AnimatedG animatedProps={flameYellowProps}>
             <Path
               d="M 0,-9 Q -6,0 0,6 Q 6,0 0,-9 Z"
               fill="#FBBF24"
