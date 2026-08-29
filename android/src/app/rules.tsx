@@ -7,18 +7,28 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES } from '../constants/theme';
 
 export default function RulesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const theme = GAME_THEMES[0]; // Use default Cyber Neon aesthetic
   const colors = theme.colors;
 
+  const isThreeButtonNav = insets.bottom >= 30;
+  const isShortScreen = Dimensions.get('window').height < 750;
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      
+      {/* Top Status Bar Spacer */}
+      <View style={{ height: insets.top, backgroundColor: colors.background }} />
 
       {/* Header HUD */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.cardBackground }]}>
@@ -33,7 +43,13 @@ export default function RulesScreen() {
         <View style={{ width: 80 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { paddingBottom: isThreeButtonNav ? 24 : Math.max(insets.bottom, 16) }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Rules Card */}
         <View style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>1. Gameplay Objective</Text>
@@ -83,7 +99,10 @@ export default function RulesScreen() {
           <Text style={styles.backMenuText}>Back to Home</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+      {Platform.OS === 'android' && isThreeButtonNav && (
+        <View style={{ height: insets.bottom, backgroundColor: '#000000', width: '100%' }} />
+      )}
+    </View>
   );
 }
 
@@ -95,14 +114,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: Dimensions.get('window').height < 750 ? 10 : 16,
     borderBottomWidth: 1.5,
   },
   backButton: {
     borderWidth: 1.5,
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: Dimensions.get('window').height < 750 ? 12 : 16,
+    paddingVertical: Dimensions.get('window').height < 750 ? 6 : 8,
   },
   backText: {
     fontSize: 12,
@@ -117,34 +136,34 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: Dimensions.get('window').height < 750 ? 10 : 20,
     alignItems: 'center',
   },
   card: {
     width: '100%',
     borderRadius: 20,
     borderWidth: 1.5,
-    padding: 20,
-    marginBottom: 20,
+    padding: Dimensions.get('window').height < 750 ? 12 : 20,
+    marginBottom: Dimensions.get('window').height < 750 ? 12 : 20,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: Dimensions.get('window').height < 750 ? 13 : 14,
     fontWeight: '800',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: Dimensions.get('window').height < 750 ? 10 : 16,
+    marginBottom: Dimensions.get('window').height < 750 ? 4 : 8,
   },
   bodyText: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: Dimensions.get('window').height < 750 ? 12 : 13,
+    lineHeight: Dimensions.get('window').height < 750 ? 18 : 20,
     fontWeight: '500',
   },
   formulaBox: {
-    marginTop: 16,
+    marginTop: Dimensions.get('window').height < 750 ? 10 : 16,
     borderRadius: 12,
     borderWidth: 1,
-    padding: 12,
+    padding: Dimensions.get('window').height < 750 ? 8 : 12,
   },
   formulaTitle: {
     fontSize: 12,
@@ -164,7 +183,7 @@ const styles = StyleSheet.create({
   },
   backMenuButton: {
     width: '100%',
-    paddingVertical: 16,
+    paddingVertical: Dimensions.get('window').height < 750 ? 12 : 16,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

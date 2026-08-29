@@ -7,31 +7,62 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePaperSession } from '../hooks/usePaperSession';
 import { GAME_THEMES, GameTheme } from '../constants/theme';
 import { GridCanvas } from '../components/canvas/GridCanvas';
 import { TokenPicker } from '../components/ui/TokenPicker';
 import { DirectionPad } from '../components/ui/DirectionPad';
 import { PlayerStatusBar } from '../components/ui/PlayerStatusBar';
+import { parseCharacterLoadout } from '../constants/characters';
+import { TreasuryBar } from '../components/ui/TreasuryBar';
+import { CollectionPopup } from '../components/ui/CollectionPopup';
+import { formatWalletSummary } from '../utils/wallet';
 
 export default function GameScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ difficulty?: string; themeId?: string; killEffect?: string }>();
+  const params = useLocalSearchParams<{
+    difficulty?: string;
+    themeId?: string;
+    killEffect?: string;
+    lines?: string;
+    p1DotColor?: string;
+    p1LineColor?: string;
+    p2DotColor?: string;
+    p2LineColor?: string;
+    characters?: string;
+  }>();
+  const insets = useSafeAreaInsets();
   
   // Extract inputs or fallback to defaults
   const difficulty = (params.difficulty === 'easy' || params.difficulty === 'medium' || params.difficulty === 'hard')
     ? params.difficulty
     : 'medium';
   const themeId = params.themeId || 'cyber-neon';
-  const killEffect = (params.killEffect === 'collapse' || params.killEffect === 'explode' || params.killEffect === 'dissolve' || params.killEffect === 'monster' || params.killEffect === 'hammer')
+  const killEffect = (params.killEffect === 'collapse' || params.killEffect === 'explode' || params.killEffect === 'dissolve' || params.killEffect === 'monster' || params.killEffect === 'hammer' || params.killEffect === 'burn' || params.killEffect === 'firecracker')
     ? params.killEffect
     : 'collapse';
 
   // Find theme details
   const activeTheme = GAME_THEMES.find((t) => t.id === themeId) || GAME_THEMES[0];
   const themeColors = activeTheme.colors;
+
+  // Custom Colors
+  const p1DotColor = params.p1DotColor || themeColors.p1Shades[0];
+  const p1LineColor = params.p1LineColor || themeColors.p1Shades[0];
+  const p2DotColor = params.p2DotColor || themeColors.p2Shades[0];
+  const p2LineColor = params.p2LineColor || themeColors.p2Shades[0];
+
+  // Custom Lines
+  const selectedLines = params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow'];
+  const characterLoadout = parseCharacterLoadout(params.characters);
+
+  // Layout Measurement state for percentage-wise dynamic allocation
+  const [boardLayout, setBoardLayout] = useState<{ width: number; height: number } | null>(null);
 
   // Initialize session
   const {
@@ -41,16 +72,22 @@ export default function GameScreen() {
     activePlayer,
     winner,
     historyLogs,
+    currencyRegions,
+    boardFeatures,
+    matchEarnings,
     selectedDotId,
     selectedToken,
     selectedDirection,
     isAiThinking,
+    isBotBlocked,
+    activeNotification,
+    dismissNotification,
     selectDot,
     selectToken,
     selectDirection,
     executeMove,
     resetGame,
-  } = usePaperSession(difficulty);
+  } = usePaperSession(difficulty, characterLoadout);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -94,91 +131,130 @@ export default function GameScreen() {
     }
   };
 
+  const isThreeButtonNav = insets.bottom >= 30;
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
+    <View style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
+      {/* Top Status Bar Spacer */}
+      <View style={{ height: insets.top, backgroundColor: themeColors.cardBackground }} />
       <StatusBar
         barStyle={activeTheme.dark ? 'light-content' : 'dark-content'}
         backgroundColor={themeColors.cardBackground}
       />
       
-      {/* Header HUD */}
-      <PlayerStatusBar
-        activePlayer={activePlayer}
-        winner={winner}
-        difficulty={difficulty}
-        isAiThinking={isAiThinking}
-        onReset={resetGame}
-        onBack={handleBack}
-        themeColors={themeColors}
-        player1Tokens={player1Tokens}
-        player2Tokens={player2Tokens}
-      />
+      <View style={styles.flexContainer}>
+        {/* Header HUD Section */}
+        <View style={styles.hudSection}>
+          <PlayerStatusBar
+            activePlayer={activePlayer}
+            winner={winner}
+            difficulty={difficulty}
+            isAiThinking={isAiThinking}
+            onReset={resetGame}
+            onBack={handleBack}
+            themeColors={{
+              ...themeColors,
+              p1Shades: [p1DotColor, p1LineColor, themeColors.p1Shades[1] || p1DotColor],
+              p2Shades: [p2DotColor, p2LineColor, themeColors.p2Shades[1] || p2DotColor],
+            }}
+            player1Tokens={player1Tokens}
+            player2Tokens={player2Tokens}
+            matchEarnings={matchEarnings}
+          />
+          <TreasuryBar matchEarnings={matchEarnings} themeColors={themeColors} />
+        </View>
 
-      <View style={styles.mainContainer}>
-        {/* Error banner */}
-        {errorMsg && (
-          <View style={[styles.errorBanner, { borderColor: '#EF4444', backgroundColor: '#FEE2E2' }]}>
-            <Text style={styles.errorText}>⚠️ {errorMsg}</Text>
-          </View>
-        )}
-
-        {/* Board Canvas */}
-        <GridCanvas
-          dots={dots}
-          activePlayer={activePlayer}
-          selectedDotId={selectedDotId}
-          selectedToken={selectedToken}
-          selectedDirection={selectedDirection}
-          onSelectDot={selectDot}
-          themeColors={themeColors}
-          killEffect={killEffect}
-          onSelectDirection={selectDirection}
-          onGestureEnd={handleExecute}
-        />
-
-        {/* Bottom panel container with a fixed height to prevent layout shifting/shaking */}
-        <View style={styles.bottomContainer}>
-          {activePlayer === 1 && !winner && (
-            <View
-              style={[
-                styles.controlCard,
-                {
-                  backgroundColor: themeColors.cardBackground,
-                  borderColor: themeColors.border,
-                },
-              ]}
-            >
-              <TokenPicker
-                tokens={player1Tokens}
-                selectedToken={selectedToken}
-                onSelectToken={selectToken}
-                themeColors={{
-                  ...themeColors,
-                  player1Ink: themeColors.p1Shades[0],
-                  player1InkLight: themeColors.p1Shades[1] + '33',
-                }}
-                disabled={selectedDotId === null}
-              />
+        {/* Board Canvas Section with dynamic measurement */}
+        <View 
+          style={styles.boardSection}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            setBoardLayout({ width, height });
+          }}
+        >
+          {errorMsg && (
+            <View style={[styles.errorBanner, { borderColor: '#EF4444', backgroundColor: '#FEE2E2' }]}>
+              <Text style={styles.errorText}>⚠️ {errorMsg}</Text>
             </View>
           )}
 
-          {activePlayer === 2 && !winner && (
-            <View
-              style={[
-                styles.thinkingCard,
-                {
-                  backgroundColor: themeColors.cardBackground,
-                  borderColor: themeColors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.thinkingText, { color: themeColors.textSecondary }]}>
-                🤖 Ink Slasher Bot is analyzing moves...
-              </Text>
-            </View>
+          {boardLayout && (
+            <GridCanvas
+              dots={dots}
+              activePlayer={activePlayer}
+              selectedDotId={selectedDotId}
+              selectedToken={selectedToken}
+              selectedDirection={selectedDirection}
+              onSelectDot={selectDot}
+              themeColors={themeColors}
+              killEffect={killEffect}
+              onSelectDirection={selectDirection}
+              onGestureEnd={handleExecute}
+              p1DotColor={p1DotColor}
+              p1LineColor={p1LineColor}
+              p2DotColor={p2DotColor}
+              p2LineColor={p2LineColor}
+              selectedLines={selectedLines}
+              characterLoadout={characterLoadout}
+              currencyRegions={currencyRegions}
+              boardFeatures={boardFeatures}
+              maxHeight={boardLayout.height}
+              maxWidth={boardLayout.width}
+            />
           )}
         </View>
+
+        {/* Bottom Panel Section */}
+        <View style={styles.bottomSection}>
+          <View style={[styles.bottomContainer, { marginBottom: isThreeButtonNav ? 0 : Math.max(insets.bottom, 12) }]}>
+            {activePlayer === 1 && !winner && (
+              <View
+                style={[
+                  styles.controlCard,
+                  {
+                    backgroundColor: themeColors.cardBackground,
+                    borderColor: themeColors.border,
+                  },
+                ]}
+              >
+                <TokenPicker
+                  tokens={player1Tokens}
+                  selectedToken={selectedToken}
+                  onSelectToken={selectToken}
+                  themeColors={{
+                    ...themeColors,
+                    player1Ink: p1DotColor,
+                    player1InkLight: p1DotColor + '33',
+                  }}
+                  disabled={selectedDotId === null}
+                />
+              </View>
+            )}
+
+            {activePlayer === 2 && !winner && (
+              <View
+                style={[
+                  styles.thinkingCard,
+                  {
+                    backgroundColor: themeColors.cardBackground,
+                    borderColor: themeColors.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.thinkingText, { color: themeColors.textSecondary }]}>
+                  🤖 Ink Slasher Bot is analyzing moves...
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
       </View>
+
+      <CollectionPopup
+        notification={activeNotification}
+        themeColors={themeColors}
+        onDismiss={dismissNotification}
+      />
 
       {/* Winner Overlay Popup */}
       {winner && (
@@ -205,6 +281,10 @@ export default function GameScreen() {
             </Text>
 
             <View style={[styles.overlayScores, { borderColor: themeColors.border }]}>
+              <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Treasure Collected</Text>
+              <Text style={[styles.scoreValue, { color: themeColors.textPrimary, textAlign: 'center', marginBottom: 12 }]}>
+                {formatWalletSummary(matchEarnings)}
+              </Text>
               <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Base Distance Scores</Text>
               <View style={styles.scoreRow}>
                 <Text style={[styles.scoreLabel, { color: themeColors.p1Shades[0] }]}>You:</Text>
@@ -238,7 +318,10 @@ export default function GameScreen() {
           </Animated.View>
         </View>
       )}
-    </SafeAreaView>
+      {Platform.OS === 'android' && isThreeButtonNav && (
+        <View style={{ height: insets.bottom, backgroundColor: '#000000', width: '100%' }} />
+      )}
+    </View>
   );
 }
 
@@ -246,12 +329,26 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  mainContainer: {
+  flexContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
     width: '100%',
+  },
+  hudSection: {
+    width: '100%',
+    flexShrink: 0,
+  },
+  boardSection: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
+  },
+  bottomSection: {
+    width: '100%',
+    flexShrink: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorBanner: {
     position: 'absolute',
@@ -270,7 +367,7 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     width: '92%',
-    height: 90,
+    height: Dimensions.get('window').height < 750 ? 80 : 90,
     justifyContent: 'center',
     alignItems: 'center',
   },

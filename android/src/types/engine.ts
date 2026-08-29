@@ -1,4 +1,5 @@
-import { Dot, TokenPool } from './game';
+import { Dot, TokenPool, PlayerWallet, ForcedMoveByPlayer, CurrencyRegion } from './game';
+import { MoveNotification } from './notifications';
 
 export interface EngineResult {
   success: boolean;
@@ -9,5 +10,11 @@ export interface EngineResult {
   activePlayer: 1 | 2;
   winner: 1 | 2 | null;
   prunedLinesCount: number;
-  killedDots: string[]; // Dot IDs that were killed during this move
+  killedDots: string[];
+  currencyRegions: CurrencyRegion[];
+  matchEarnings: PlayerWallet;
+  currencyCollectedThisMove: PlayerWallet;
+  forcedMoveByPlayer: ForcedMoveByPlayer;
+  featureMessages: string[];
+  notifications: MoveNotification[];
 }

@@ -1,5 +1,6 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { TokenPool } from '../../types/game';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { TokenPool, PlayerWallet } from '../../types/game';
+import { formatWalletSummary } from '../../utils/wallet';
 
 interface PlayerStatusBarProps {
   activePlayer: 1 | 2;
@@ -11,6 +12,7 @@ interface PlayerStatusBarProps {
   themeColors: any;
   player1Tokens: TokenPool;
   player2Tokens: TokenPool;
+  matchEarnings?: PlayerWallet;
 }
 
 export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
@@ -23,6 +25,7 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
   themeColors,
   player1Tokens,
   player2Tokens,
+  matchEarnings,
 }) => {
   const formatDiff = (diff: string) => {
     return diff.charAt(0).toUpperCase() + diff.slice(1);
@@ -101,6 +104,15 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
         </View>
       </View>
 
+      {matchEarnings && (matchEarnings.gold > 0 || matchEarnings.silver > 0 || matchEarnings.money > 0) && (
+        <View style={styles.earningsRow}>
+          <Text style={[styles.earningsLabel, { color: themeColors.textSecondary }]}>Treasure:</Text>
+          <Text style={[styles.earningsValue, { color: themeColors.accent }]}>
+            {formatWalletSummary(matchEarnings)}
+          </Text>
+        </View>
+      )}
+
       {/* Turn Indicator Banner */}
       <View style={styles.statusBanner}>
         {winner ? (
@@ -137,7 +149,7 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    padding: 16,
+    padding: Dimensions.get('window').height < 750 ? 10 : 16,
     borderBottomWidth: 1.5,
     elevation: 4,
   },
@@ -145,7 +157,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Dimensions.get('window').height < 750 ? 4 : 8,
   },
   leftGroup: {
     flexDirection: 'row',
@@ -178,7 +190,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   infoRow: {
-    marginBottom: 8,
+    marginBottom: Dimensions.get('window').height < 750 ? 4 : 8,
   },
   infoText: {
     fontSize: 13,
@@ -220,7 +232,7 @@ const styles = StyleSheet.create({
   opponentTokensRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: Dimensions.get('window').height < 750 ? 4 : 6,
   },
   opponentTokensLabel: {
     fontSize: 10,
@@ -228,6 +240,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginRight: 8,
+  },
+  earningsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    gap: 6,
+  },
+  earningsLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  earningsValue: {
+    fontSize: 11,
+    fontWeight: '800',
   },
   tokenBadgesContainer: {
     flexDirection: 'row',
