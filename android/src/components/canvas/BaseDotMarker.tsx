@@ -91,8 +91,8 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
     }
     const s = pulse.value * scale;
     return {
-      transform: `translate(${cx}, ${cy}) rotate(${facingRotation}) scale(${s})`,
       opacity,
+      transform: [{ scale: s }],
     };
   });
 
@@ -165,7 +165,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      transform: `translate(${cx}, ${cy + ty})`,
+      transform: [{ translateY: ty }],
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
@@ -181,7 +181,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      transform: `translate(${cx}, ${cy + ty})`,
+      transform: [{ translateY: ty }],
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
@@ -190,8 +190,6 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
     const val = aliveVal.value;
     const progress = Math.max(0, Math.min((val - 0.4) / 0.6, 1.0));
     const rotation = -70 * progress;
-    const tx = cx + 60 * progress;
-    const ty = cy - 70 * progress;
 
     let opacity = 0;
     if (val >= 0.4) {
@@ -200,7 +198,11 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       opacity = val / 0.4;
     }
     return {
-      transform: `translate(${tx}, ${ty}) rotate(${rotation})`,
+      transform: [
+        { translateX: 60 * progress },
+        { translateY: -70 * progress },
+        { rotate: `${rotation}deg` },
+      ],
       opacity: Math.max(0, Math.min(opacity, 1.0)),
     };
   });
@@ -242,7 +244,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
     const ty = -18 * progress;
     const opacity = progress < 0.85 ? 1.0 - progress / 0.85 : 0;
     return {
-      transform: `translate(${cx}, ${cy + ty}) scale(${scale})`,
+      transform: [{ translateY: ty }, { scale }],
       opacity,
     };
   });
@@ -254,7 +256,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
     const ty = -24 * progress;
     const opacity = progress < 0.75 ? 1.0 - progress / 0.75 : 0;
     return {
-      transform: `translate(${cx}, ${cy + ty}) scale(${scale})`,
+      transform: [{ translateY: ty }, { scale }],
       opacity,
     };
   });
@@ -266,7 +268,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
     const ty = -30 * progress;
     const opacity = progress < 0.65 ? 1.0 - progress / 0.65 : 0;
     return {
-      transform: `translate(${cx}, ${cy + ty}) scale(${scale})`,
+      transform: [{ translateY: ty }, { scale }],
       opacity,
     };
   });
@@ -375,9 +377,11 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       )}
 
       {/* Core Shape (Animated Transform, Pulse & Fade) */}
-      <AnimatedG animatedProps={shapeProps}>
-        {renderShape()}
-      </AnimatedG>
+      <G transform={`translate(${cx}, ${cy}) rotate(${facingRotation})`}>
+        <AnimatedG animatedProps={shapeProps}>
+          {renderShape()}
+        </AnimatedG>
+      </G>
 
       {/* Render selected elimination visual trace (Drawn ON TOP of core dot) */}
       {killEffect === 'collapse' && (
@@ -430,7 +434,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       )}
 
       {killEffect === 'monster' && (
-        <G>
+        <G transform={`translate(${cx}, ${cy})`}>
           {/* Menacing Cyber Beast Top Jaw */}
           <AnimatedG animatedProps={topJawProps}>
             <Path
@@ -457,7 +461,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       )}
 
       {killEffect === 'hammer' && (
-        <G>
+        <G transform={`translate(${cx}, ${cy})`}>
           {/* Cybernetic Energy Warhammer */}
           <AnimatedG animatedProps={hammerProps}>
             {/* Dark carbon-fiber handle */}
@@ -520,7 +524,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       )}
 
       {killEffect === 'burn' && (
-        <G>
+        <G transform={`translate(${cx}, ${cy})`}>
           {/* Flame Red */}
           <AnimatedG animatedProps={flameRedProps}>
             <Path

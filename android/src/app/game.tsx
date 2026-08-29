@@ -16,7 +16,7 @@ import { usePaperSession } from '../hooks/usePaperSession';
 import { GAME_THEMES, GameTheme } from '../constants/theme';
 import { GridCanvas } from '../components/canvas/GridCanvas';
 import { TokenPicker } from '../components/ui/TokenPicker';
-import { DirectionPad } from '../components/ui/DirectionPad';
+import { Direction } from '../types/game';
 import { PlayerStatusBar } from '../components/ui/PlayerStatusBar';
 import { parseCharacterLoadout } from '../constants/characters';
 import { TreasuryBar } from '../components/ui/TreasuryBar';
@@ -114,9 +114,9 @@ export default function GameScreen() {
     }
   }, [winner]);
 
-  const handleExecute = () => {
+  const handleExecute = (dir: Direction, dotId: string) => {
     setErrorMsg(null);
-    const result = executeMove();
+    const result = executeMove(dir, dotId);
     if (!result.success && result.error) {
       setErrorMsg(result.error);
       setTimeout(() => setErrorMsg(null), 3000);

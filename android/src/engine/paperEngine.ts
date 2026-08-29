@@ -4,7 +4,6 @@ import { MoveNotification } from '../types/notifications';
 import { GRID_CONFIG } from '../constants/board';
 import {
   getMaxTrailLength,
-  getConnectedTrailHistory,
   isTrapPointForOpponent,
   doesTrailCutKillDot,
 } from './characterEngine';
@@ -14,6 +13,7 @@ import {
   areSegmentsIntersecting,
   pointsEqual,
   getCellsAlongPath,
+  getConnectedTrailHistory,
 } from './geometry';
 import { EMPTY_WALLET, mergeWallets } from '../utils/wallet';
 import {
