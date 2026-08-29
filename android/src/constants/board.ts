@@ -4,7 +4,7 @@ import { DEFAULT_CHARACTER_LOADOUT } from './characters';
 export const GRID_CONFIG = {
   ROWS: 15,
   COLS: 11,
-  CELL_SIZE: 35,
+  CELL_SIZE: 48,
   MAX_LINE_HISTORY: 3,
 };
 

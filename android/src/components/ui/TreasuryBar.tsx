@@ -21,24 +21,16 @@ export const TreasuryBar: React.FC<TreasuryBarProps> = ({ matchEarnings, themeCo
         { backgroundColor: themeColors.cardBackground, borderColor: themeColors.border },
       ]}
     >
-      <Text style={[styles.title, { color: themeColors.textSecondary }]}>YOUR TREASURY</Text>
       <View style={styles.row}>
+        <Text style={[styles.title, { color: themeColors.textSecondary }]}>TREASURY:</Text>
         <View style={styles.item}>
-          <Text style={styles.coinEmoji}>🪙</Text>
-          <Text style={[styles.value, { color: '#FFB900' }]}>{matchEarnings.gold}</Text>
-          <Text style={[styles.label, { color: themeColors.textSecondary }]}>Gold</Text>
+          <Text style={styles.value}>🪙 <Text style={{ color: '#FFB900' }}>{matchEarnings.gold}</Text></Text>
         </View>
-        <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
         <View style={styles.item}>
-          <Text style={styles.coinEmoji}>🥈</Text>
-          <Text style={[styles.value, { color: '#C8C8C8' }]}>{matchEarnings.silver}</Text>
-          <Text style={[styles.label, { color: themeColors.textSecondary }]}>Silver</Text>
+          <Text style={styles.value}>🥈 <Text style={{ color: '#C8C8C8' }}>{matchEarnings.silver}</Text></Text>
         </View>
-        <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
         <View style={styles.item}>
-          <Text style={styles.coinEmoji}>💵</Text>
-          <Text style={[styles.value, { color: '#4ADE80' }]}>{matchEarnings.money}</Text>
-          <Text style={[styles.label, { color: themeColors.textSecondary }]}>Coins</Text>
+          <Text style={styles.value}>💵 <Text style={{ color: '#4ADE80' }}>{matchEarnings.money}</Text></Text>
         </View>
       </View>
     </View>
@@ -48,43 +40,29 @@ export const TreasuryBar: React.FC<TreasuryBarProps> = ({ matchEarnings, themeCo
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 12,
-    marginBottom: 6,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    paddingVertical: 8,
+    marginVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingVertical: 4,
     paddingHorizontal: 12,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
   },
   title: {
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1.2,
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
   },
   item: {
+    flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 56,
-  },
-  coinEmoji: {
-    fontSize: 16,
-    marginBottom: 2,
   },
   value: {
-    fontSize: 18,
+    fontSize: 12,
     fontWeight: '900',
-  },
-  label: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  divider: {
-    width: 1,
-    height: 28,
   },
 });
