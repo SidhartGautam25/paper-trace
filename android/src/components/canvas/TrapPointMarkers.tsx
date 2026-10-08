@@ -1,6 +1,7 @@
 import React from 'react';
 import { Circle, G } from 'react-native-svg';
 import { Point } from '../../types/game';
+import { cellToPixel } from '../../engine/geometry';
 
 interface TrapPointMarkersProps {
   trapPoints: Point[];
@@ -22,8 +23,7 @@ export const TrapPointMarkers: React.FC<TrapPointMarkersProps> = ({
   return (
     <G>
       {trapPoints.map((point) => {
-        const cx = point.c * cellSize + offsetX;
-        const cy = point.r * cellSize + offsetY;
+        const { x: cx, y: cy } = cellToPixel(point, cellSize, offsetX, offsetY);
         return (
           <G key={`trap_${point.r}_${point.c}`}>
             <Circle cx={cx} cy={cy} r={radius + 2} fill="#EF4444" opacity={0.25} />

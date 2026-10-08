@@ -45,7 +45,7 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
             {activePlayer === 1 ? 'Bot' : 'Your'} Pool:
           </Text>
           <View style={styles.tokenBadgesContainer}>
-            {[1, 2, 3, 4, 5].map((val) => {
+            {[1, 2, 3, 4, 5, 6].map((val) => {
               const opponentTokens = activePlayer === 1 ? player2Tokens : player1Tokens;
               const count = opponentTokens[val] || 0;
               return (

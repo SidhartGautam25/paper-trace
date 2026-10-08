@@ -42,7 +42,7 @@ export const BoardRegionLayer: React.FC<BoardRegionLayerProps> = ({
   offsetX,
   offsetY,
 }) => {
-  const glyphSize = cellSize * 0.5;
+  const glyphSize = cellSize * 0.95;
 
   return (
     <G>

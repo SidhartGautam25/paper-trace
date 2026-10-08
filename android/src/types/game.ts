@@ -23,7 +23,7 @@ export interface PlayerWallet {
   money: number;
 }
 
-/** Treasure zone — collected when player's dot touches any of the four corner dots. */
+/** Treasure hex — collected when a player's dot lands on this cell. */
 export interface CurrencyRegion {
   id: string;
   origin: import('./gridRegion').RegionOrigin;
@@ -44,7 +44,8 @@ export interface Dot {
   isAlive: boolean;
 }
 
-export type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+/** Six neighbors of a pointy-top hex. There is no straight north or south step. */
+export type Direction = 'E' | 'NE' | 'NW' | 'W' | 'SW' | 'SE';
 
 export interface TokenPool {
   [key: number]: number; // Token value (1 to 5) mapped to remaining count
@@ -61,4 +62,5 @@ export interface GameState {
   matchEarnings: PlayerWallet;
   boardFeatures: BoardFeatureInstance[];
   forcedMoveByPlayer: ForcedMoveByPlayer;
+  blackBoxes?: Point[];
 }

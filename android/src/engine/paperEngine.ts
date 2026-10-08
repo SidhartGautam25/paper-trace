@@ -6,6 +6,7 @@ import {
   getMaxTrailLength,
   isTrapPointForOpponent,
   doesTrailCutKillDot,
+  pathCrossesOwnTrail,
 } from './characterEngine';
 import {
   getDestination,
@@ -14,6 +15,7 @@ import {
   pointsEqual,
   getCellsAlongPath,
   getConnectedTrailHistory,
+  HEX_DIRECTIONS,
 } from './geometry';
 import { EMPTY_WALLET, mergeWallets } from '../utils/wallet';
 import {
@@ -128,7 +130,7 @@ function buildFeatureNotifications(
         id: `feat_${feature.id}`,
         kind: 'shield_zone',
         title: 'Sanctuary Region',
-        body: 'Sanctuary: your dot cannot be cut here. Only one dot may occupy the four-dot region.',
+        body: 'Sanctuary: your dot cannot be cut on this hex. Only one dot may occupy it.',
       });
     } else if (feature.typeId === 'trail_erase') {
       notifs.push({
@@ -198,6 +200,15 @@ export function executeShot(
   }
 
   const pathCells = getCellsAlongPath(startPos, endPos);
+  if (!pathCells.every(isWithinBounds)) {
+    return failResult(gameState, 'Shot exceeds grid boundaries.');
+  }
+  if (gameState.blackBoxes && pathCells.some((cell) => gameState.blackBoxes!.some((b) => pointsEqual(b, cell)))) {
+    return failResult(gameState, 'Shot blocked: cannot travel through or cross black box obstacles.');
+  }
+  if (pathCrossesOwnTrail(movingDotId, pathCells, dots)) {
+    return failResult(gameState, 'Move blocked: touches teammate line or crosses own trail.');
+  }
   const touchedPoints = getMoveTouchedPoints(startPos, pathCells);
 
   const newSegmentId = generateSegmentId(movingDotId);
@@ -369,13 +380,6 @@ export function executeShot(
     winner = 2;
   } else if (p1AliveCount === 0 && p2AliveCount === 0) {
     winner = activePlayer;
-  } else {
-    const nextPlayerPool = getEffectiveTokenPool(
-      nextPlayer === 1 ? updatedPlayer1Tokens : updatedPlayer2Tokens
-    );
-    if (!hasAnyValidMoves(nextPlayer, resolvedDots, nextPlayerPool, gameState.boardFeatures)) {
-      winner = resolveEndGameWinner(resolvedDots);
-    }
   }
 
   return {
@@ -400,7 +404,8 @@ export function hasAnyValidMoves(
   player: 1 | 2,
   dots: Dot[],
   tokens: TokenPool,
-  boardFeatures: GameState['boardFeatures']
+  boardFeatures: GameState['boardFeatures'],
+  blackBoxes?: Point[]
 ): boolean {
   const aliveDots = dots.filter((d) => d.player === player && d.isAlive);
   if (aliveDots.length === 0) return false;
@@ -411,13 +416,20 @@ export function hasAnyValidMoves(
     .filter((val) => pool[val] > 0);
   if (availableTokens.length === 0) return false;
 
-  const directions: Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const directions: Direction[] = HEX_DIRECTIONS;
 
   for (const dot of aliveDots) {
     for (const token of availableTokens) {
       for (const dir of directions) {
         const dest = getDestination(dot.currentPos, dir, token);
-        if (isWithinBounds(dest) && canLandAt(dest, dot.id, dots, boardFeatures)) {
+        const path = getCellsAlongPath(dot.currentPos, dest);
+        if (
+          isWithinBounds(dest) &&
+          path.every(isWithinBounds) &&
+          !(blackBoxes && path.some((cell) => blackBoxes.some((b) => pointsEqual(b, cell)))) &&
+          canLandAt(dest, dot.id, dots, boardFeatures, blackBoxes) &&
+          !pathCrossesOwnTrail(dot.id, path, dots)
+        ) {
           return true;
         }
       }

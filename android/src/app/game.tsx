@@ -17,15 +17,16 @@ import { GAME_THEMES, GameTheme } from '../constants/theme';
 import { GridCanvas } from '../components/canvas/GridCanvas';
 import { TokenPicker } from '../components/ui/TokenPicker';
 import { Direction } from '../types/game';
-import { PlayerStatusBar } from '../components/ui/PlayerStatusBar';
 import { parseCharacterLoadout } from '../constants/characters';
-import { TreasuryBar } from '../components/ui/TreasuryBar';
 import { CollectionPopup } from '../components/ui/CollectionPopup';
 import { formatWalletSummary } from '../utils/wallet';
+import { GRID_CONFIG } from '../constants/board';
+import { getLevelById, getPlayerLoadoutForLevel, getBotLoadoutForLevel, getBlackBoxesForLevel } from '../constants/levels';
 
 export default function GameScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    levelId?: string;
     difficulty?: string;
     themeId?: string;
     killEffect?: string;
@@ -38,10 +39,15 @@ export default function GameScreen() {
   }>();
   const insets = useSafeAreaInsets();
   
-  // Extract inputs or fallback to defaults
+  // Declarative Level Setup
+  const levelNum = params.levelId ? parseInt(params.levelId, 10) : 1;
+  const activeLevel = getLevelById(isNaN(levelNum) ? 1 : levelNum);
+
+  // Difficulty is decided declaratively from level config, with param override if provided
   const difficulty = (params.difficulty === 'easy' || params.difficulty === 'medium' || params.difficulty === 'hard')
     ? params.difficulty
-    : 'medium';
+    : activeLevel.difficulty;
+
   const themeId = params.themeId || 'cyber-neon';
   const killEffect = (params.killEffect === 'collapse' || params.killEffect === 'explode' || params.killEffect === 'dissolve' || params.killEffect === 'monster' || params.killEffect === 'hammer' || params.killEffect === 'burn' || params.killEffect === 'firecracker')
     ? params.killEffect
@@ -57,14 +63,18 @@ export default function GameScreen() {
   const p2DotColor = params.p2DotColor || themeColors.p2Shades[0];
   const p2LineColor = params.p2LineColor || themeColors.p2Shades[0];
 
-  // Custom Lines
+  // Custom Lines & Loadouts
   const selectedLines = params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow'];
-  const characterLoadout = parseCharacterLoadout(params.characters);
+  const characterLoadout = params.characters
+    ? parseCharacterLoadout(params.characters)
+    : getPlayerLoadoutForLevel(activeLevel);
+  const botLoadout = getBotLoadoutForLevel(activeLevel);
+  const blackBoxes = getBlackBoxesForLevel(activeLevel);
 
   // Layout Measurement state for percentage-wise dynamic allocation
   const [boardLayout, setBoardLayout] = useState<{ width: number; height: number } | null>(null);
 
-  // Initialize session
+  // Initialize session with declarative level configs
   const {
     dots,
     player1Tokens,
@@ -78,8 +88,6 @@ export default function GameScreen() {
     selectedDotId,
     selectedToken,
     selectedDirection,
-    isAiThinking,
-    isBotBlocked,
     activeNotification,
     dismissNotification,
     selectDot,
@@ -87,7 +95,7 @@ export default function GameScreen() {
     selectDirection,
     executeMove,
     resetGame,
-  } = usePaperSession(difficulty, characterLoadout);
+  } = usePaperSession(difficulty, characterLoadout, botLoadout, blackBoxes);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -136,7 +144,17 @@ export default function GameScreen() {
   return (
     <View style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
       {/* Top Status Bar Spacer */}
-      <View style={{ height: insets.top, backgroundColor: themeColors.cardBackground }} />
+      <View style={{ height: Math.max(insets.top, 8) + 32, backgroundColor: themeColors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
+          <Text style={[styles.backText, { color: themeColors.textSecondary }]}>←</Text>
+        </TouchableOpacity>
+        <Text style={{ color: themeColors.textPrimary, fontSize: 15, fontWeight: '700' }}>
+          {activeLevel.name}: {activeLevel.title}
+        </Text>
+        <Text style={{ color: themeColors.textSecondary, fontSize: 11, fontWeight: '500' }}>
+          {activeLevel.description}
+        </Text>
+      </View>
       <StatusBar
         barStyle={activeTheme.dark ? 'light-content' : 'dark-content'}
         backgroundColor={themeColors.cardBackground}
@@ -145,23 +163,13 @@ export default function GameScreen() {
       <View style={styles.flexContainer}>
         {/* Header HUD Section */}
         <View style={styles.hudSection}>
-          <PlayerStatusBar
-            activePlayer={activePlayer}
-            winner={winner}
-            difficulty={difficulty}
-            isAiThinking={isAiThinking}
-            onReset={resetGame}
-            onBack={handleBack}
-            themeColors={{
-              ...themeColors,
-              p1Shades: [p1DotColor, p1LineColor, themeColors.p1Shades[1] || p1DotColor],
-              p2Shades: [p2DotColor, p2LineColor, themeColors.p2Shades[1] || p2DotColor],
-            }}
-            player1Tokens={player1Tokens}
-            player2Tokens={player2Tokens}
-            matchEarnings={matchEarnings}
+          <TokenPicker
+            tokens={player2Tokens}
+            selectedToken={null}
+            onSelectToken={() => {}}
+            themeColors={themeColors}
+            interactive={false}
           />
-          <TreasuryBar matchEarnings={matchEarnings} themeColors={themeColors} />
         </View>
 
         {/* Board Canvas Section with dynamic measurement */}
@@ -198,6 +206,7 @@ export default function GameScreen() {
               characterLoadout={characterLoadout}
               currencyRegions={currencyRegions}
               boardFeatures={boardFeatures}
+              blackBoxes={blackBoxes}
               maxHeight={boardLayout.height}
               maxWidth={boardLayout.width}
             />
@@ -205,48 +214,18 @@ export default function GameScreen() {
         </View>
 
         {/* Bottom Panel Section */}
-        <View style={styles.bottomSection}>
-          <View style={[styles.bottomContainer, { marginBottom: isThreeButtonNav ? 0 : Math.max(insets.bottom, 12) }]}>
-            {activePlayer === 1 && !winner && (
-              <View
-                style={[
-                  styles.controlCard,
-                  {
-                    backgroundColor: themeColors.cardBackground,
-                    borderColor: themeColors.border,
-                  },
-                ]}
-              >
-                <TokenPicker
-                  tokens={player1Tokens}
-                  selectedToken={selectedToken}
-                  onSelectToken={selectToken}
-                  themeColors={{
-                    ...themeColors,
-                    player1Ink: p1DotColor,
-                    player1InkLight: p1DotColor + '33',
-                  }}
-                  disabled={selectedDotId === null}
-                />
-              </View>
-            )}
-
-            {activePlayer === 2 && !winner && (
-              <View
-                style={[
-                  styles.thinkingCard,
-                  {
-                    backgroundColor: themeColors.cardBackground,
-                    borderColor: themeColors.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.thinkingText, { color: themeColors.textSecondary }]}>
-                  🤖 Ink Slasher Bot is analyzing moves...
-                </Text>
-              </View>
-            )}
-          </View>
+        <View style={[styles.bottomSection, { marginBottom: isThreeButtonNav ? 4 : Math.max(insets.bottom, 8) }]}>
+          <TokenPicker
+            tokens={player1Tokens}
+            selectedToken={selectedToken}
+            onSelectToken={selectToken}
+            themeColors={{
+              ...themeColors,
+              player1Ink: p1DotColor,
+              player1InkLight: p1DotColor + '33',
+            }}
+            disabled={activePlayer !== 1 || !!winner || selectedDotId === null}
+          />
         </View>
       </View>
 
@@ -270,34 +249,40 @@ export default function GameScreen() {
               },
             ]}
           >
-            <Text style={[styles.overlaySubtitle, { color: themeColors.textSecondary }]}>Match Over</Text>
+            <Text style={[styles.overlaySubtitle, { color: themeColors.textSecondary }]}>
+              {activeLevel.name} • {activeLevel.title}
+            </Text>
             <Text style={[styles.overlayTitle, { color: winner === 1 ? themeColors.p1Shades[0] : '#EF4444' }]}>
               {winner === 1 ? '🎉 VICTORY' : '💀 DEFEAT'}
             </Text>
             <Text style={[styles.overlayDesc, { color: themeColors.textSecondary }]}>
               {winner === 1
-                ? 'You have successfully out-inked the Bot!'
-                : 'The Bot has defeated you in battle.'}
+                ? 'All 4 opponent dots eliminated!'
+                : 'All 4 of your dots were eliminated.'}
             </Text>
 
             <View style={[styles.overlayScores, { borderColor: themeColors.border }]}>
-              <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Treasure Collected</Text>
-              <Text style={[styles.scoreValue, { color: themeColors.textPrimary, textAlign: 'center', marginBottom: 12 }]}>
-                {formatWalletSummary(matchEarnings)}
-              </Text>
-              <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Base Distance Scores</Text>
+              <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Dots Remaining</Text>
               <View style={styles.scoreRow}>
-                <Text style={[styles.scoreLabel, { color: themeColors.p1Shades[0] }]}>You:</Text>
+                <Text style={[styles.scoreLabel, { color: themeColors.p1Shades[0] }]}>Player Alive:</Text>
                 <Text style={[styles.scoreValue, { color: themeColors.textPrimary }]}>
-                  {dots.filter((d) => d.player === 1 && d.isAlive).reduce((sum, d) => sum + (14 - d.currentPos.r), 0)} pts
+                  {dots.filter((d) => d.player === 1 && d.isAlive).length} / 4
                 </Text>
               </View>
               <View style={styles.scoreRow}>
-                <Text style={[styles.scoreLabel, { color: themeColors.p2Shades[0] }]}>Bot:</Text>
+                <Text style={[styles.scoreLabel, { color: themeColors.p2Shades[0] }]}>Bot Alive:</Text>
                 <Text style={[styles.scoreValue, { color: themeColors.textPrimary }]}>
-                  {dots.filter((d) => d.player === 2 && d.isAlive).reduce((sum, d) => sum + d.currentPos.r, 0)} pts
+                  {dots.filter((d) => d.player === 2 && d.isAlive).length} / 4
                 </Text>
               </View>
+              {matchEarnings && (matchEarnings.gold > 0 || matchEarnings.silver > 0 || matchEarnings.money > 0) && (
+                <>
+                  <Text style={[styles.scoreTitle, { color: themeColors.textPrimary, marginTop: 10 }]}>Treasure Collected</Text>
+                  <Text style={[styles.scoreValue, { color: themeColors.textPrimary, textAlign: 'center' }]}>
+                    {formatWalletSummary(matchEarnings)}
+                  </Text>
+                </>
+              )}
             </View>
 
             <TouchableOpacity
@@ -313,7 +298,7 @@ export default function GameScreen() {
               onPress={handleBack}
               activeOpacity={0.8}
             >
-              <Text style={[styles.overlayButtonSecondaryText, { color: themeColors.textPrimary }]}>Go to Menu</Text>
+              <Text style={[styles.overlayButtonSecondaryText, { color: themeColors.textPrimary }]}>Level Select</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -341,7 +326,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
     position: 'relative',
   },
   bottomSection: {
@@ -365,11 +350,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  bottomContainer: {
-    width: '92%',
-    height: Dimensions.get('window').height < 750 ? 80 : 90,
-    justifyContent: 'center',
+  backButton: {
+    position: 'absolute',
+    left: 10,
+    bottom: 0,
+    width: 32,
+    height: 28,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backText: {
+    fontSize: 20,
+    fontWeight: '700',
   },
   controlCard: {
     width: '100%',

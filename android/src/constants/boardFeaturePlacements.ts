@@ -4,11 +4,11 @@ import { assertUniqueRegionOrigins } from '../types/gridRegion';
 
 /** Region-based special tiles — reduced density vs point markers. */
 export const BOARD_FEATURE_PLACEMENTS: BoardFeatureInstance[] = [
-  { id: 'shield_center', typeId: 'shield_zone', origin: { r: 6, c: 4 } },
-  { id: 'erase_bot', typeId: 'trail_erase', origin: { r: 1, c: 4 } },
-  { id: 'erase_player', typeId: 'trail_erase', origin: { r: 11, c: 4 } },
-  { id: 'lock_bot', typeId: 'forced_lock', origin: { r: 3, c: 2 } },
-  { id: 'lock_player', typeId: 'forced_lock', origin: { r: 9, c: 6 } },
+  { id: 'shield_center', typeId: 'shield_zone', origin: { r: 10, c: 7 } },
+  { id: 'erase_bot', typeId: 'trail_erase', origin: { r: 2, c: 7 } },
+  { id: 'erase_player', typeId: 'trail_erase', origin: { r: 19, c: 7 } },
+  { id: 'lock_bot', typeId: 'forced_lock', origin: { r: 5, c: 4 } },
+  { id: 'lock_player', typeId: 'forced_lock', origin: { r: 15, c: 10 } },
 ];
 
 assertUniqueRegionOrigins([
@@ -17,8 +17,12 @@ assertUniqueRegionOrigins([
 ]);
 
 export function createBoardFeatures(): BoardFeatureInstance[] {
+  // Board position powers disabled from board effect for now
+  return [];
+  /*
   return BOARD_FEATURE_PLACEMENTS.map((f) => ({
     ...f,
     origin: { ...f.origin },
   }));
+  */
 }

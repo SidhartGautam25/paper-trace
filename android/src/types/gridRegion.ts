@@ -1,18 +1,13 @@
 import { Point } from './game';
 
-/** Top-left corner of a 2×2 grid-dot square (four intersection corners). */
+/** Row and column of a single hex cell. */
 export interface RegionOrigin {
   r: number;
   c: number;
 }
 
 export function getRegionCorners(origin: RegionOrigin): Point[] {
-  return [
-    { r: origin.r, c: origin.c },
-    { r: origin.r, c: origin.c + 1 },
-    { r: origin.r + 1, c: origin.c },
-    { r: origin.r + 1, c: origin.c + 1 },
-  ];
+  return [{ r: origin.r, c: origin.c }];
 }
 
 export function pointsEqual(a: Point, b: Point): boolean {

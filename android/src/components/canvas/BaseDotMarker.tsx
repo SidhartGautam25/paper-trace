@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Dot } from '../../types/game';
 import { BoardFeatureInstance } from '../../types/boardFeatures';
-import { getMovementRotationDegrees } from '../../engine/geometry';
+import { cellToPixel, getMovementRotationDegrees } from '../../engine/geometry';
 import { isDotProtectedAtPosition } from '../../features/boardFeatureQueries';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -43,8 +43,8 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
 }) => {
   if (!dot || !dot.currentPos) return null;
 
-  const cx = dot.currentPos.c * cellSize + offsetX;
-  const cy = dot.currentPos.r * cellSize + offsetY;
+  const { x: cx, y: cy } = cellToPixel(dot.currentPos, cellSize, offsetX, offsetY);
+  const markerScale = Math.min(0.62, (cellSize * 0.46) / 8);
   const facingRotation = getMovementRotationDegrees(dot);
   const isShielded = dot.isAlive && isDotProtectedAtPosition(dot.currentPos, boardFeatures);
 
@@ -56,7 +56,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
     if (isSelected && dot.isAlive) {
       pulse.value = withRepeat(
         withSequence(
-          withTiming(1.3, { duration: 600 }),
+          withTiming(1.08, { duration: 600 }),
           withTiming(1.0, { duration: 600 })
         ),
         -1,
@@ -306,43 +306,37 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
         return (
           <G>
             <Path d="M 0,-7 L 6.5,5.5 L 0,2.5 L -6.5,5.5 Z" fill={color} />
-            <Path d="M 0,-3.5 L 2.5,2.5 L 0,1 L -2.5,2.5 Z" fill="#FFFFFF" opacity={0.65} />
           </G>
         );
       case 'hexagon':
         return (
           <G>
             <Path d="M 0,-8 L 7,-4 L 7,4 L 0,8 L -7,4 L -7,-4 Z" fill={color} />
-            <Path d="M 0,-4 L 3.5,-2 L 3.5,2 L 0,4 L -3.5,2 L -3.5,-2 Z" fill="#FFFFFF" opacity={0.65} />
           </G>
         );
       case 'diamond':
         return (
           <G>
             <Path d="M 0,-9 L 8,0 L 0,9 L -8,0 Z" fill={color} />
-            <Path d="M 0,-4 L 3.5,0 L 0,4 L -3.5,0 Z" fill="#FFFFFF" opacity={0.65} />
           </G>
         );
       case 'square':
         return (
           <G>
             <Rect x={-7} y={-7} width={14} height={14} rx={1.5} fill={color} />
-            <Rect x={-3} y={-3} width={6} height={6} rx={0.5} fill="#FFFFFF" opacity={0.65} />
           </G>
         );
       case 'star':
         return (
           <G>
             <Path d="M 0,-9 Q 0,-2 7,0 Q 0,2 0,9 Q 0,2 -7,0 Q 0,-2 0,-9 Z" fill={color} />
-            <Circle cx={0} cy={0} r={2} fill="#FFFFFF" opacity={0.65} />
           </G>
         );
       case 'circle':
       default:
         return (
           <G>
-            <Circle cx={0} cy={0} r={7.8} fill={color} />
-            <Circle cx={-1.5} cy={-1.5} r={1.8} fill="#FFFFFF" opacity={0.65} />
+            <Circle cx={0} cy={0} r={6.2} fill={color} />
           </G>
         );
     }
@@ -350,34 +344,21 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
 
   return (
     <G>
-      {/* Outer Selection Highlight Ring */}
-      {isSelected && dot.isAlive && (
-        <Circle
-          cx={cx}
-          cy={cy}
-          r={18}
-          fill="none"
-          stroke={color}
-          strokeWidth={1.5}
-          strokeOpacity={0.35}
-        />
-      )}
-
       {isShielded && (
         <Circle
           cx={cx}
           cy={cy}
-          r={16}
+          r={Math.max(6, cellSize * 0.36)}
           fill="none"
           stroke="#38BDF8"
-          strokeWidth={2}
-          strokeOpacity={0.7}
-          strokeDasharray="4, 2"
+          strokeWidth={1.4}
+          strokeOpacity={0.85}
+          strokeDasharray="3, 2"
         />
       )}
 
       {/* Core Shape (Animated Transform, Pulse & Fade) */}
-      <G transform={`translate(${cx}, ${cy}) rotate(${facingRotation})`}>
+      <G transform={`translate(${cx}, ${cy}) rotate(${facingRotation}) scale(${markerScale})`}>
         <AnimatedG animatedProps={shapeProps}>
           {renderShape()}
         </AnimatedG>

@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -9,145 +8,30 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import Svg, { Circle, Line } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GAME_THEMES, KILL_EFFECTS } from '../constants/theme';
-import {
-  CHARACTER_LIST,
-  DEFAULT_CHARACTER_LOADOUT,
-  getCharacter,
-  parseCharacterLoadout,
-} from '../constants/characters';
-import { CharacterId } from '../types/game';
-import { getSavedCharacterLoadout, saveCharacterLoadout } from '../utils/characterConfig';
+import { GAME_THEMES } from '../constants/theme';
+import { LEVELS, getBlackBoxesForLevel } from '../constants/levels';
+import { getCharacter } from '../constants/characters';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    difficulty?: string;
-    themeId?: string;
-    killEffect?: string;
-    lines?: string;
-    p1DotColor?: string;
-    p1LineColor?: string;
-    p2DotColor?: string;
-    p2LineColor?: string;
-    characters?: string;
-  }>();
   const insets = useSafeAreaInsets();
+  const currentTheme = GAME_THEMES[0]; // Cyber neon theme default
 
-  // Local state for configuration
-  const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [selectedThemeId, setSelectedThemeId] = useState<string>('cyber-neon');
-  const [selectedKillEffect, setSelectedKillEffect] = useState<'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer' | 'burn' | 'firecracker'>('collapse');
-  const [selectedLines, setSelectedLines] = useState<string>('solid,dotted,glow');
+  const [selectedLevelId, setSelectedLevelId] = useState<number>(1);
 
-  const currentTheme = GAME_THEMES.find((t) => t.id === selectedThemeId) || GAME_THEMES[0];
-
-  const getThemeDefaultColors = (themeId: string) => {
-    switch (themeId) {
-      case 'emerald-gold':
-        return { p1: '#00FF66', p2: '#FFB900' };
-      case 'steel-ember':
-        return { p1: '#00F2FF', p2: '#FF2A2A' };
-      case 'cosmic-nebula':
-        return { p1: '#9B51E0', p2: '#FE53BB' };
-      case 'cyber-neon':
-      default:
-        return { p1: '#00F2FF', p2: '#FE53BB' };
-    }
-  };
-
-  const [p1DotColor, setP1DotColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p1);
-  const [p1LineColor, setP1LineColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p1);
-  const [p2DotColor, setP2DotColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p2);
-  const [p2LineColor, setP2LineColor] = useState<string>(() => getThemeDefaultColors('cyber-neon').p2);
-
-  const [characterLoadout, setCharacterLoadout] = useState<[CharacterId, CharacterId, CharacterId]>(
-    DEFAULT_CHARACTER_LOADOUT
-  );
-
-  useEffect(() => {
-    getSavedCharacterLoadout().then(setCharacterLoadout);
-  }, []);
-
-  // Synchronize state with route params when coming back from Settings
-  useEffect(() => {
-    if (params.difficulty) setSelectedDifficulty(params.difficulty as any);
-    if (params.themeId) {
-      setSelectedThemeId(params.themeId);
-      const defaults = getThemeDefaultColors(params.themeId);
-      setP1DotColor(params.p1DotColor || defaults.p1);
-      setP1LineColor(params.p1LineColor || defaults.p1);
-      setP2DotColor(params.p2DotColor || defaults.p2);
-      setP2LineColor(params.p2LineColor || defaults.p2);
-    } else {
-      if (params.p1DotColor) setP1DotColor(params.p1DotColor);
-      if (params.p1LineColor) setP1LineColor(params.p1LineColor);
-      if (params.p2DotColor) setP2DotColor(params.p2DotColor);
-      if (params.p2LineColor) setP2LineColor(params.p2LineColor);
-    }
-    if (params.killEffect) setSelectedKillEffect(params.killEffect as any);
-    if (params.lines) setSelectedLines(params.lines);
-    if (params.characters) setCharacterLoadout(parseCharacterLoadout(params.characters));
-  }, [
-    params.difficulty,
-    params.themeId,
-    params.killEffect,
-    params.lines,
-    params.p1DotColor,
-    params.p1LineColor,
-    params.p2DotColor,
-    params.p2LineColor,
-    params.characters,
-  ]);
-
-  const currentEffect = KILL_EFFECTS.find((e) => e.id === selectedKillEffect) || KILL_EFFECTS[0];
-
-  const difficultyLabels = {
-    easy: 'Easy (Predictable Paths)',
-    medium: 'Medium (Greedy Heuristic)',
-    hard: 'Hard (Minimax Lookahead)',
-  };
+  const selectedLevel = LEVELS.find((l) => l.id === selectedLevelId) || LEVELS[0];
 
   const handlePlayGame = () => {
     router.push({
       pathname: '/game',
       params: {
-        difficulty: selectedDifficulty,
-        themeId: selectedThemeId,
-        killEffect: selectedKillEffect,
-        lines: selectedLines,
-        p1DotColor,
-        p1LineColor,
-        p2DotColor,
-        p2LineColor,
-        characters: characterLoadout.join(','),
+        levelId: String(selectedLevelId),
       },
     });
   };
-
-  const handleOpenSettings = () => {
-    router.push({
-      pathname: '/settings',
-      params: {
-        difficulty: selectedDifficulty,
-        themeId: selectedThemeId,
-        killEffect: selectedKillEffect,
-        lines: selectedLines,
-        p1DotColor,
-        p1LineColor,
-        p2DotColor,
-        p2LineColor,
-        characters: characterLoadout.join(','),
-      },
-    });
-  };
-
-  const charactersSummary = characterLoadout
-    .map((id, i) => `Dot ${i + 1}: ${getCharacter(id).name}`)
-    .join(' · ');
 
   const isThreeButtonNav = insets.bottom >= 30;
 
@@ -167,7 +51,7 @@ export default function HomeScreen() {
       >
         {/* Game Logo Header */}
         <View style={styles.logoContainer}>
-          <Svg width={100} height={100} viewBox="0 0 80 80">
+          <Svg width={80} height={80} viewBox="0 0 80 80">
             {/* Background circular radar grid */}
             <Circle cx={40} cy={40} r={38} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
             <Circle cx={40} cy={40} r={26} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
@@ -190,75 +74,132 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Dynamic Config Summary Panel */}
-        <View
-          style={[
-            styles.configCard,
-            {
-              backgroundColor: currentTheme.colors.cardBackground,
-              borderColor: currentTheme.colors.border,
-            },
-          ]}
-        >
-          <Text style={[styles.configCardTitle, { color: currentTheme.colors.textPrimary }]}>
-            Current Game Rules
+        {/* Declarative Level Selection Section */}
+        <View style={styles.levelsSection}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>
+            SELECT LEVEL
           </Text>
 
-          <View style={styles.configRow}>
-            <Text style={[styles.configLabel, { color: currentTheme.colors.textSecondary }]}>
-              Level
-            </Text>
-            <Text style={[styles.configVal, { color: currentTheme.colors.textPrimary }]}>
-              {difficultyLabels[selectedDifficulty]}
-            </Text>
-          </View>
+          {LEVELS.map((level) => {
+            const isSelected = selectedLevelId === level.id;
+            const diffColor =
+              level.difficulty === 'easy'
+                ? '#10B981'
+                : level.difficulty === 'medium'
+                ? '#F59E0B'
+                : '#EF4444';
 
-          <View style={styles.configRow}>
-            <Text style={[styles.configLabel, { color: currentTheme.colors.textSecondary }]}>
-              Aesthetic
-            </Text>
-            <Text style={[styles.configVal, { color: currentTheme.colors.textPrimary }]}>
-              {currentTheme.name}
-            </Text>
-          </View>
+            const blackBoxes = getBlackBoxesForLevel(level);
 
-          <View style={styles.configRow}>
-            <Text style={[styles.configLabel, { color: currentTheme.colors.textSecondary }]}>
-              Characters
-            </Text>
-            <Text style={[styles.configVal, { color: currentTheme.colors.textPrimary, flex: 1, textAlign: 'right', marginLeft: 8 }]}>
-              {charactersSummary}
-            </Text>
-          </View>
+            const dotUnits = [
+              level.dots.dot1,
+              level.dots.dot2,
+              level.dots.dot3,
+              level.dots.dot4,
+            ];
 
-          <View style={styles.configRow}>
-            <Text style={[styles.configLabel, { color: currentTheme.colors.textSecondary }]}>
-              Elimination
-            </Text>
-            <Text style={[styles.configVal, { color: currentTheme.colors.textPrimary }]}>
-              {currentEffect.name}
-            </Text>
-          </View>
+            return (
+              <TouchableOpacity
+                key={level.id}
+                style={[
+                  styles.levelCard,
+                  {
+                    backgroundColor: isSelected
+                      ? currentTheme.colors.cardBackground
+                      : 'rgba(255, 255, 255, 0.03)',
+                    borderColor: isSelected
+                      ? currentTheme.colors.accent
+                      : currentTheme.colors.border,
+                    borderWidth: isSelected ? 2 : 1,
+                  },
+                ]}
+                onPress={() => setSelectedLevelId(level.id)}
+                activeOpacity={0.75}
+              >
+                <View style={styles.levelHeaderRow}>
+                  <View style={styles.levelTitleGroup}>
+                    <Text
+                      style={[
+                        styles.levelName,
+                        { color: isSelected ? currentTheme.colors.accent : currentTheme.colors.textPrimary },
+                      ]}
+                    >
+                      {level.name}
+                    </Text>
+                    <Text style={[styles.levelTitle, { color: currentTheme.colors.textSecondary }]}>
+                      {level.title}
+                    </Text>
+                  </View>
 
-          <TouchableOpacity
-            style={[styles.settingsButton, { borderColor: currentTheme.colors.border }]}
-            onPress={handleOpenSettings}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.settingsButtonText, { color: currentTheme.colors.accent }]}>
-              Configure Settings ⚙️
-            </Text>
-          </TouchableOpacity>
+                  <View style={styles.badgeRow}>
+                    {blackBoxes.length > 0 && (
+                      <View style={styles.obsBadge}>
+                        <Text style={styles.obsText}>⬛ {blackBoxes.length}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.diffBadge, { backgroundColor: diffColor + '22', borderColor: diffColor }]}>
+                      <Text style={[styles.diffText, { color: diffColor }]}>
+                        {level.difficulty.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Dots Loadout preview for this level */}
+                <View style={styles.dotsPreviewRow}>
+                  <Text style={[styles.dotsPreviewLabel, { color: currentTheme.colors.textSecondary }]}>
+                    Dots:
+                  </Text>
+                  <View style={styles.dotsBadgeContainer}>
+                    {dotUnits.map((charId, idx) => {
+                      const charDef = getCharacter(charId);
+                      return (
+                        <View
+                          key={idx}
+                          style={[
+                            styles.dotPill,
+                            {
+                              backgroundColor: isSelected
+                                ? currentTheme.colors.accent + '22'
+                                : 'rgba(255, 255, 255, 0.06)',
+                              borderColor: isSelected
+                                ? currentTheme.colors.accent + '55'
+                                : 'rgba(255, 255, 255, 0.12)',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.dotPillText,
+                              {
+                                color: isSelected
+                                  ? currentTheme.colors.accent
+                                  : currentTheme.colors.textPrimary,
+                              },
+                            ]}
+                          >
+                            {charDef.name}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* Primary Play Button (Focused and Prominent in the center) */}
+        {/* Primary Play Button */}
         <View style={styles.playButtonContainer}>
           <TouchableOpacity
             style={[styles.playButton, { backgroundColor: currentTheme.colors.accent }]}
             onPress={handlePlayGame}
             activeOpacity={0.8}
           >
-            <Text style={styles.playButtonText}>PLAY GAME</Text>
+            <Text style={styles.playButtonText}>
+              START {selectedLevel.name.toUpperCase()}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -297,87 +238,133 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 16,
     flexGrow: 1,
     justifyContent: 'space-between',
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
+    marginTop: 6,
+    marginBottom: 8,
   },
   appTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '900',
     letterSpacing: 4,
-    marginTop: 10,
+    marginTop: 8,
     textAlign: 'center',
   },
   appSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    marginTop: 4,
+    marginTop: 2,
     textAlign: 'center',
   },
-  configCard: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    padding: 20,
+  levelsSection: {
     marginVertical: 12,
-    elevation: 4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
   },
-  configCardTitle: {
-    fontSize: 14,
+  sectionTitle: {
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
-    marginBottom: 16,
+    marginBottom: 10,
     textAlign: 'center',
   },
-  configRow: {
+  levelCard: {
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    elevation: 3,
+  },
+  levelHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  configLabel: {
-    fontSize: 13,
+  levelTitleGroup: {
+    flex: 1,
+  },
+  levelName: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  levelTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  obsBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  obsText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#E5E7EB',
+    letterSpacing: 0.5,
+  },
+  diffBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  diffText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  dotsPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 8,
+  },
+  dotsPreviewLabel: {
+    fontSize: 11,
     fontWeight: '700',
   },
-  configVal: {
-    fontSize: 13,
-    fontWeight: '800',
+  dotsBadgeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    flex: 1,
   },
-  settingsButton: {
-    borderRadius: 10,
+  dotPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     borderWidth: 1,
-    paddingVertical: 10,
-    marginTop: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
   },
-  settingsButtonText: {
-    fontSize: 13,
-    fontWeight: '800',
+  dotPillText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   playButtonContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 16,
+    marginVertical: 10,
   },
   playButton: {
-    borderRadius: 20,
+    borderRadius: 16,
     width: '100%',
-    paddingVertical: 20,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -385,25 +372,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
-    transform: [{ scale: 1.02 }],
   },
   playButtonText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     letterSpacing: 2,
   },
   utilityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 12,
+    marginTop: 8,
     gap: 12,
   },
   utilityButton: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1.5,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
