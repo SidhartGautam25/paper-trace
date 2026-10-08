@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { G, Path, Rect } from 'react-native-svg';
-import { Dot, Direction, CharacterId, CurrencyRegion, BoardFeatureInstance } from '../../types/game';
+import { Dot, Direction, CharacterId, CurrencyRegion, BoardFeatureInstance, Point } from '../../types/game';
 import { GRID_CONFIG } from '../../constants/board';
 import { HexChain } from './HexChain';
 import { BaseDotMarker } from './BaseDotMarker';
@@ -41,6 +41,7 @@ interface GridCanvasProps {
   characterLoadout: CharacterId[];
   currencyRegions: CurrencyRegion[];
   boardFeatures: BoardFeatureInstance[];
+  blackBoxes?: Point[];
   maxHeight: number;
   maxWidth: number;
 }
@@ -63,6 +64,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   p2LineColor,
   characterLoadout,
   boardFeatures,
+  blackBoxes = [],
   maxHeight,
   maxWidth,
 }) => {
@@ -219,10 +221,15 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     return getCharacterForDot(dotId, characterLoadout).shape;
   };
 
+  const blackBoxSet = new Set((blackBoxes ?? []).map((p) => `${p.r},${p.c}`));
+
   const hexCells = [];
   for (let r = 0; r < GRID_CONFIG.ROWS; r++) {
     for (let c = 0; c < GRID_CONFIG.COLS; c++) {
       const { x, y } = cellToPixel({ r, c }, cellSize, offsetX, offsetY);
+      const isBlack = blackBoxSet.has(`${r},${c}`);
+
+      // Base board grid cell (underneath)
       hexCells.push(
         <Path
           key={`hex_${r}_${c}`}
@@ -232,6 +239,17 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
           strokeWidth={Math.max(0.8, cellSize * 0.07)}
         />
       );
+
+      // If black box obstacle: style exactly like dot boxes (TrailHex) with black inside
+      if (isBlack) {
+        hexCells.push(
+          <G key={`black_box_${r}_${c}`}>
+            <Path d={hexPolygonPath(x, y, cellSize * 0.9)} fill="#000000" />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.76)} fill="#FFFFFF" />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.62)} fill="#000000" />
+          </G>
+        );
+      }
     }
   }
 
@@ -333,7 +351,9 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
           const path = walkHex(startPos, dir, selectedToken);
           const endPos = path[path.length - 1];
           if (!endPos || !path.every(isWithinBounds)) return null;
-          if (!canLandAt(endPos, selectedDotId, dots, boardFeatures)) return null;
+          const hitsBlackBox = path.some((cell) => blackBoxSet.has(`${cell.r},${cell.c}`));
+          if (hitsBlackBox) return null;
+          if (!canLandAt(endPos, selectedDotId, dots, boardFeatures, blackBoxes)) return null;
           if (pathCrossesOwnTrail(selectedDotId, path, dots)) return null;
           const kills = moveKillsOpponent(movingDot, path);
 
@@ -362,8 +382,9 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const path = walkHex(startPos, selectedDirection, selectedToken);
     const endPos = getDestination(startPos, selectedDirection, selectedToken);
     const inBounds = path.every(isWithinBounds);
+    const hitsBlackBox = path.some((cell) => blackBoxSet.has(`${cell.r},${cell.c}`));
     const touchesOwn = pathCrossesOwnTrail(selectedDotId, path, dots);
-    const canLand = inBounds && !touchesOwn && canLandAt(endPos, selectedDotId, dots, boardFeatures);
+    const canLand = inBounds && !hitsBlackBox && !touchesOwn && canLandAt(endPos, selectedDotId, dots, boardFeatures, blackBoxes);
     const kills = canLand && moveKillsOpponent(movingDot, path);
 
     return (

@@ -203,6 +203,9 @@ export function executeShot(
   if (!pathCells.every(isWithinBounds)) {
     return failResult(gameState, 'Shot exceeds grid boundaries.');
   }
+  if (gameState.blackBoxes && pathCells.some((cell) => gameState.blackBoxes!.some((b) => pointsEqual(b, cell)))) {
+    return failResult(gameState, 'Shot blocked: cannot travel through or cross black box obstacles.');
+  }
   if (pathCrossesOwnTrail(movingDotId, pathCells, dots)) {
     return failResult(gameState, 'Move blocked: touches teammate line or crosses own trail.');
   }
@@ -401,7 +404,8 @@ export function hasAnyValidMoves(
   player: 1 | 2,
   dots: Dot[],
   tokens: TokenPool,
-  boardFeatures: GameState['boardFeatures']
+  boardFeatures: GameState['boardFeatures'],
+  blackBoxes?: Point[]
 ): boolean {
   const aliveDots = dots.filter((d) => d.player === player && d.isAlive);
   if (aliveDots.length === 0) return false;
@@ -422,7 +426,8 @@ export function hasAnyValidMoves(
         if (
           isWithinBounds(dest) &&
           path.every(isWithinBounds) &&
-          canLandAt(dest, dot.id, dots, boardFeatures) &&
+          !(blackBoxes && path.some((cell) => blackBoxes.some((b) => pointsEqual(b, cell)))) &&
+          canLandAt(dest, dot.id, dots, boardFeatures, blackBoxes) &&
           !pathCrossesOwnTrail(dot.id, path, dots)
         ) {
           return true;

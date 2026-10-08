@@ -21,7 +21,7 @@ import { parseCharacterLoadout } from '../constants/characters';
 import { CollectionPopup } from '../components/ui/CollectionPopup';
 import { formatWalletSummary } from '../utils/wallet';
 import { GRID_CONFIG } from '../constants/board';
-import { getLevelById, getPlayerLoadoutForLevel, getBotLoadoutForLevel } from '../constants/levels';
+import { getLevelById, getPlayerLoadoutForLevel, getBotLoadoutForLevel, getBlackBoxesForLevel } from '../constants/levels';
 
 export default function GameScreen() {
   const router = useRouter();
@@ -69,6 +69,7 @@ export default function GameScreen() {
     ? parseCharacterLoadout(params.characters)
     : getPlayerLoadoutForLevel(activeLevel);
   const botLoadout = getBotLoadoutForLevel(activeLevel);
+  const blackBoxes = getBlackBoxesForLevel(activeLevel);
 
   // Layout Measurement state for percentage-wise dynamic allocation
   const [boardLayout, setBoardLayout] = useState<{ width: number; height: number } | null>(null);
@@ -94,7 +95,7 @@ export default function GameScreen() {
     selectDirection,
     executeMove,
     resetGame,
-  } = usePaperSession(difficulty, characterLoadout, botLoadout);
+  } = usePaperSession(difficulty, characterLoadout, botLoadout, blackBoxes);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -205,6 +206,7 @@ export default function GameScreen() {
               characterLoadout={characterLoadout}
               currencyRegions={currencyRegions}
               boardFeatures={boardFeatures}
+              blackBoxes={blackBoxes}
               maxHeight={boardLayout.height}
               maxWidth={boardLayout.width}
             />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GameState, Dot, TokenPool, Direction, CharacterId, CurrencyRegion, PlayerWallet } from '../types/game';
+import { GameState, Dot, TokenPool, Direction, CharacterId, CurrencyRegion, PlayerWallet, Point } from '../types/game';
 import { EMPTY_FORCED_MOVE } from '../types/boardFeatures';
 import { MoveNotification } from '../types/notifications';
 import {
@@ -31,7 +31,8 @@ function getCharacterLabel(dotId: string, dots: Dot[]): string {
 export function usePaperSession(
   initialDifficulty: 'easy' | 'medium' | 'hard' = 'medium',
   characterLoadout: CharacterId[] = DEFAULT_CHARACTER_LOADOUT,
-  botLoadout: CharacterId[] = characterLoadout
+  botLoadout: CharacterId[] = characterLoadout,
+  blackBoxes: Point[] = []
 ) {
   const [dots, setDots] = useState<Dot[]>(() => createInitialDots(characterLoadout, botLoadout));
   const [player1Tokens, setPlayer1Tokens] = useState<TokenPool>(INITIAL_TOKEN_POOL);
@@ -129,6 +130,7 @@ export function usePaperSession(
     matchEarnings,
     boardFeatures,
     forcedMoveByPlayer,
+    blackBoxes,
   });
 
   const applyMoveResult = (result: ReturnType<typeof executeShot>, logMsg: string) => {
@@ -324,5 +326,6 @@ export function usePaperSession(
     resetGame,
     characterLoadout,
     botLoadout,
+    blackBoxes,
   };
 }

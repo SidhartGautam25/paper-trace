@@ -1,5 +1,5 @@
 import { GameState, Dot, TokenPool, Direction, Point } from '../types/game';
-import { getCellsAlongPath, getDestination, isWithinBounds, HEX_DIRECTIONS } from './geometry';
+import { getCellsAlongPath, getDestination, isWithinBounds, HEX_DIRECTIONS, pointsEqual } from './geometry';
 import { pathCrossesOwnTrail } from './characterEngine';
 import { getEffectiveTokenPool } from '../utils/tokenPool';
 import { executeShot } from './paperEngine';
@@ -45,7 +45,8 @@ export function getLegalMoves(gameState: GameState): AIMove[] {
         if (
           isWithinBounds(dest) &&
           path.every(isWithinBounds) &&
-          canLandAt(dest, dot.id, gameState.dots, gameState.boardFeatures) &&
+          !(gameState.blackBoxes && path.some((cell) => gameState.blackBoxes!.some((b) => pointsEqual(b, cell)))) &&
+          canLandAt(dest, dot.id, gameState.dots, gameState.boardFeatures, gameState.blackBoxes) &&
           !pathCrossesOwnTrail(dot.id, path, gameState.dots)
         ) {
           legalMoves.push({

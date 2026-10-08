@@ -34,6 +34,10 @@ export function validateLandingPosition(
   const movingDot = gameState.dots.find((d) => d.id === movingDotId);
   if (!movingDot) return 'Invalid dot.';
 
+  if (gameState.blackBoxes && gameState.blackBoxes.some((b) => pointsEqual(b, endPos))) {
+    return 'That point is an impassable black box obstacle.';
+  }
+
   const occupant = gameState.dots.find(
     (d) => d.isAlive && d.id !== movingDotId && pointsEqual(d.currentPos, endPos)
   );
@@ -62,12 +66,14 @@ export function canLandAt(
   endPos: Point,
   movingDotId: string,
   dots: Dot[],
-  boardFeatures: BoardFeatureInstance[]
+  boardFeatures: BoardFeatureInstance[],
+  blackBoxes?: Point[]
 ): boolean {
   return (
     validateLandingPosition(endPos, movingDotId, {
       dots,
       boardFeatures,
+      blackBoxes,
     } as GameState) === null
   );
 }

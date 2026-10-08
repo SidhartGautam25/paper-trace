@@ -62,4 +62,5 @@ export interface GameState {
   matchEarnings: PlayerWallet;
   boardFeatures: BoardFeatureInstance[];
   forcedMoveByPlayer: ForcedMoveByPlayer;
+  blackBoxes?: Point[];
 }

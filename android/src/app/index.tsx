@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import Svg, { Circle, Line } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES } from '../constants/theme';
-import { LEVELS } from '../constants/levels';
+import { LEVELS, getBlackBoxesForLevel } from '../constants/levels';
 import { getCharacter } from '../constants/characters';
 
 export default function HomeScreen() {
@@ -89,6 +89,8 @@ export default function HomeScreen() {
                 ? '#F59E0B'
                 : '#EF4444';
 
+            const blackBoxes = getBlackBoxesForLevel(level);
+
             const dotUnits = [
               level.dots.dot1,
               level.dots.dot2,
@@ -129,10 +131,17 @@ export default function HomeScreen() {
                     </Text>
                   </View>
 
-                  <View style={[styles.diffBadge, { backgroundColor: diffColor + '22', borderColor: diffColor }]}>
-                    <Text style={[styles.diffText, { color: diffColor }]}>
-                      {level.difficulty.toUpperCase()}
-                    </Text>
+                  <View style={styles.badgeRow}>
+                    {blackBoxes.length > 0 && (
+                      <View style={styles.obsBadge}>
+                        <Text style={styles.obsText}>⬛ {blackBoxes.length}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.diffBadge, { backgroundColor: diffColor + '22', borderColor: diffColor }]}>
+                      <Text style={[styles.diffText, { color: diffColor }]}>
+                        {level.difficulty.toUpperCase()}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
@@ -290,6 +299,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  obsBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  obsText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#E5E7EB',
+    letterSpacing: 0.5,
   },
   diffBadge: {
     paddingHorizontal: 10,
