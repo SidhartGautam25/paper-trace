@@ -5,11 +5,11 @@ import { cellToPixel, hexPolygonPath } from '../../engine/geometry';
 
 export interface HexChainCell {
   point: Point;
-  /** Per-hex center fill. Black rim and white ring stay the same. */
+  /** Character (or classic player) fill inside the white ring. */
   fill?: string;
+  /** Head hex uses a double white ring; body uses a single solid ring. */
+  isHead?: boolean;
 }
-
-export type TrailRing = 'solid' | 'double';
 
 interface HexChainProps {
   cells: HexChainCell[];
@@ -18,13 +18,51 @@ interface HexChainProps {
   offsetX: number;
   offsetY: number;
   /**
-   * trail: every hex has a thin black rim and a white ring on all six sides.
+   * trail: player-colored rim, white ring(s), character-colored fill.
    * hint: pale dashed hexes, kept visually separate from a real line.
-   * threat: a possible move that cuts or lands on an opponent.
+   * threat: full trail-style hexes in kill colors (drawn above real trails).
    */
   variant?: 'trail' | 'hint' | 'threat';
-  /** White-ring treatment on every hex. Identifies the character. */
-  ring?: TrailRing;
+  /** Player blue/red outer rim on trail hexes. */
+  borderColor?: string;
+}
+
+export const KILL_HINT_BORDER = '#FF4D00';
+export const KILL_HINT_FILL = '#FFE94A';
+
+export function TrailHex({
+  x,
+  y,
+  hexSize,
+  fill,
+  borderColor,
+  isHead,
+}: {
+  x: number;
+  y: number;
+  hexSize: number;
+  fill: string;
+  borderColor: string;
+  isHead: boolean;
+}) {
+  const rimRadius = hexSize * (isHead ? 0.92 : 0.9);
+  const fillRadius = hexSize * (isHead ? 0.52 : 0.62);
+
+  return (
+    <G>
+      <Path d={hexPolygonPath(x, y, rimRadius)} fill={borderColor} />
+      {isHead ? (
+        <G>
+          <Path d={hexPolygonPath(x, y, hexSize * 0.84)} fill="#FFFFFF" />
+          <Path d={hexPolygonPath(x, y, hexSize * 0.72)} fill={borderColor} />
+          <Path d={hexPolygonPath(x, y, hexSize * 0.64)} fill="#FFFFFF" />
+        </G>
+      ) : (
+        <Path d={hexPolygonPath(x, y, hexSize * 0.76)} fill="#FFFFFF" />
+      )}
+      <Path d={hexPolygonPath(x, y, fillRadius)} fill={fill} />
+    </G>
+  );
 }
 
 export const HexChain: React.FC<HexChainProps> = ({
@@ -34,38 +72,27 @@ export const HexChain: React.FC<HexChainProps> = ({
   offsetX,
   offsetY,
   variant = 'trail',
-  ring = 'solid',
+  borderColor = '#1A1A1A',
 }) => {
   if (cells.length === 0) return null;
 
-  if (variant === 'hint' || variant === 'threat') {
-    const threat = variant === 'threat';
+  if (variant === 'threat') {
+    const last = cells.length - 1;
     return (
       <G>
         {cells.map((cell, index) => {
           const { x, y } = cellToPixel(cell.point, hexSize, offsetX, offsetY);
-          const isLast = index === cells.length - 1;
+          const isHead = index === last;
           return (
-            <G key={`hint_${cell.point.r}_${cell.point.c}`}>
-              <Path
-                d={hexPolygonPath(x, y, hexSize * 0.72)}
-                fill={threat ? '#F59E0B' : color}
-                fillOpacity={threat ? 0.55 : 0.22}
-                stroke={threat ? '#B45309' : color}
-                strokeOpacity={0.98}
-                strokeWidth={threat ? Math.max(2.2, hexSize * 0.12) : Math.max(1.6, hexSize * 0.09)}
-                strokeDasharray={
-                  threat
-                    ? undefined
-                    : `${Math.max(3, hexSize * 0.22)} ${Math.max(2, hexSize * 0.14)}`
-                }
+            <G key={`kill_${cell.point.r}_${cell.point.c}`}>
+              <TrailHex
+                x={x}
+                y={y}
+                hexSize={hexSize}
+                fill={cell.fill ?? KILL_HINT_FILL}
+                borderColor={KILL_HINT_BORDER}
+                isHead={isHead}
               />
-              {threat && isLast ? (
-                <Path
-                  d={hexPolygonPath(x, y, hexSize * 0.28)}
-                  fill="#7C2D12"
-                />
-              ) : null}
             </G>
           );
         })}
@@ -73,29 +100,44 @@ export const HexChain: React.FC<HexChainProps> = ({
     );
   }
 
-  const blackRadius = hexSize * (ring === 'double' ? 0.92 : 0.9);
-  const fillRadius = hexSize * (ring === 'double' ? 0.52 : 0.62);
+  if (variant === 'hint') {
+    return (
+      <G>
+        {cells.map((cell) => {
+          const { x, y } = cellToPixel(cell.point, hexSize, offsetX, offsetY);
+          return (
+            <G key={`hint_${cell.point.r}_${cell.point.c}`}>
+              <Path
+                d={hexPolygonPath(x, y, hexSize * 0.72)}
+                fill={color}
+                fillOpacity={0.22}
+                stroke={color}
+                strokeOpacity={0.98}
+                strokeWidth={Math.max(1.6, hexSize * 0.09)}
+                strokeDasharray={`${Math.max(3, hexSize * 0.22)} ${Math.max(2, hexSize * 0.14)}`}
+              />
+            </G>
+          );
+        })}
+      </G>
+    );
+  }
 
   return (
     <G>
       {cells.map((cell) => {
         const { x, y } = cellToPixel(cell.point, hexSize, offsetX, offsetY);
         const fill = cell.fill ?? color;
-
         return (
           <G key={`body_${cell.point.r}_${cell.point.c}`}>
-            <Path d={hexPolygonPath(x, y, blackRadius)} fill="#1A1A1A" />
-            {ring === 'solid' ? (
-              <Path d={hexPolygonPath(x, y, hexSize * 0.76)} fill="#FFFFFF" />
-            ) : null}
-            {ring === 'double' ? (
-              <G>
-                <Path d={hexPolygonPath(x, y, hexSize * 0.84)} fill="#FFFFFF" />
-                <Path d={hexPolygonPath(x, y, hexSize * 0.72)} fill="#1A1A1A" />
-                <Path d={hexPolygonPath(x, y, hexSize * 0.64)} fill="#FFFFFF" />
-              </G>
-            ) : null}
-            <Path d={hexPolygonPath(x, y, fillRadius)} fill={fill} />
+            <TrailHex
+              x={x}
+              y={y}
+              hexSize={hexSize}
+              fill={fill}
+              borderColor={borderColor}
+              isHead={cell.isHead === true}
+            />
           </G>
         );
       })}
