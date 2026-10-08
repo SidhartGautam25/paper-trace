@@ -54,21 +54,21 @@ export default function RulesScreen() {
         <View style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>1. Gameplay Objective</Text>
           <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
-            Paper Trace is a vector-grid strategy game. Your goal is to maneuver your nodes, draw lines, and eliminate the opponent's nodes by intersecting their trails or landing on them directly.
+            Paper Trace is a hex-grid strategy game. Your goal is to maneuver your nodes, fill hex trails, and eliminate the opponent's nodes by crossing their trails or landing on them directly.
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>2. Movement & Tokens</Text>
           <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
             • On your turn, select one of your alive nodes.{"\n"}
-            • Choose a <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>Distance Token (1 to 5)</Text>. This defines how many grid spaces your node will travel.{"\n"}
-            • Swipe in any of the <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>8 tactical directions</Text> (horizontal, vertical, or diagonal) to draw the vector and move your node.
+            • Choose a <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>Distance Token (1 to 5)</Text>. This defines how many hexes your node will travel.{"\n"}
+            • Swipe in any of the <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>6 hex directions</Text> to fill that many hexes in a straight line and move your node.
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>3. Elimination Mechanics</Text>
           <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
-            • <Text style={{ color: '#EF4444', fontWeight: '700' }}>Direct Hit:</Text> Landing directly on the exact grid intersection where an enemy node resides destroys it instantly.{"\n"}
-            • <Text style={{ color: '#EF4444', fontWeight: '700' }}>Line Cutting:</Text> Moving your node across an active enemy trail segment will cut their connection and destroy that enemy node.{"\n"}
-            • <Text style={{ color: colors.p1Shades[0], fontWeight: '700' }}>Self-Pruning:</Text> If your path crosses one of your own active trails, you will prune (erase) those intersected segments without harming your node.
+            • <Text style={{ color: '#EF4444', fontWeight: '700' }}>Direct Hit:</Text> Landing on the hex where an enemy node resides destroys it instantly.{"\n"}
+            • <Text style={{ color: '#EF4444', fontWeight: '700' }}>Trail Cutting:</Text> Moving your node across an active enemy hex trail cuts their connection and destroys that enemy node.{"\n"}
+            • <Text style={{ color: colors.p1Shades[0], fontWeight: '700' }}>Own Trail:</Text> A move is illegal if it lands on your trail or runs along its side, including your own piece and a teammate's line. The path has to stay clear of that line.
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>4. Game Over & Tie-Breaker</Text>

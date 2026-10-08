@@ -1,6 +1,6 @@
 import { Dot, LineSegment, Point } from '../types/game';
 import { getCharacter } from '../constants/characters';
-import { getCellsAlongPath, pointsEqual, areSegmentsIntersecting, getConnectedTrailHistory } from './geometry';
+import { getCellsAlongPath, getSegmentCells, pointsEqual, areSegmentsIntersecting, getConnectedTrailHistory, stepHex, HEX_DIRECTIONS } from './geometry';
 import { BoardFeatureInstance } from '../types/boardFeatures';
 import { isPointOnRegion } from '../types/gridRegion';
 
@@ -88,6 +88,44 @@ export function doesTrailCutKillDot(
     const segmentIndex = dot.history.findIndex((s) => s.id === segment.id);
     if (segmentIndex >= 0 && isSegmentProtectedFromCuts(dot, segmentIndex)) return false;
     return areSegmentsIntersecting(newStart, newEnd, segment.start, segment.end, false);
+  });
+}
+
+function cellKey(point: Point): string {
+  return `${point.r},${point.c}`;
+}
+
+/**
+ * True when this move lands on or shares a side with a friendly trail.
+ * Stepping off the mover's own hex is allowed. Brushing the rest of that
+ * line, or any teammate's line, is not.
+ */
+export function pathCrossesOwnTrail(movingDotId: string, pathCells: Point[], dots: Dot[]): boolean {
+  const moving = dots.find((dot) => dot.id === movingDotId);
+  if (!moving || pathCells.length === 0) return false;
+
+  const forbidden = new Set<string>();
+  for (const dot of dots) {
+    if (!dot.isAlive || dot.player !== moving.player) continue;
+    forbidden.add(cellKey(dot.currentPos));
+    for (const segment of dot.history) {
+      for (const cell of getSegmentCells(segment.start, segment.end)) {
+        forbidden.add(cellKey(cell));
+      }
+    }
+  }
+  const startKey = cellKey(moving.currentPos);
+  forbidden.delete(startKey);
+
+  return pathCells.some((cell) => {
+    const key = cellKey(cell);
+    if (forbidden.has(key)) return true;
+    return HEX_DIRECTIONS.some((direction) => {
+      const neighbor = stepHex(cell, direction);
+      const neighborKey = cellKey(neighbor);
+      if (neighborKey === startKey) return false;
+      return forbidden.has(neighborKey);
+    });
   });
 }
 

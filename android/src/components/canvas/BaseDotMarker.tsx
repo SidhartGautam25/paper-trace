@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Dot } from '../../types/game';
 import { BoardFeatureInstance } from '../../types/boardFeatures';
-import { getMovementRotationDegrees } from '../../engine/geometry';
+import { cellToPixel, getMovementRotationDegrees } from '../../engine/geometry';
 import { isDotProtectedAtPosition } from '../../features/boardFeatureQueries';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -43,8 +43,8 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
 }) => {
   if (!dot || !dot.currentPos) return null;
 
-  const cx = dot.currentPos.c * cellSize + offsetX;
-  const cy = dot.currentPos.r * cellSize + offsetY;
+  const { x: cx, y: cy } = cellToPixel(dot.currentPos, cellSize, offsetX, offsetY);
+  const markerScale = Math.min(1, cellSize / 18);
   const facingRotation = getMovementRotationDegrees(dot);
   const isShielded = dot.isAlive && isDotProtectedAtPosition(dot.currentPos, boardFeatures);
 
@@ -355,7 +355,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
         <Circle
           cx={cx}
           cy={cy}
-          r={18}
+          r={Math.max(11, cellSize * 0.78)}
           fill="none"
           stroke={color}
           strokeWidth={1.5}
@@ -367,7 +367,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
         <Circle
           cx={cx}
           cy={cy}
-          r={16}
+          r={Math.max(10, cellSize * 0.68)}
           fill="none"
           stroke="#38BDF8"
           strokeWidth={2}
@@ -377,7 +377,7 @@ export const BaseDotMarker: React.FC<BaseDotMarkerProps> = ({
       )}
 
       {/* Core Shape (Animated Transform, Pulse & Fade) */}
-      <G transform={`translate(${cx}, ${cy}) rotate(${facingRotation})`}>
+      <G transform={`translate(${cx}, ${cy}) rotate(${facingRotation}) scale(${markerScale})`}>
         <AnimatedG animatedProps={shapeProps}>
           {renderShape()}
         </AnimatedG>

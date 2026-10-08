@@ -52,7 +52,7 @@ export function validateLandingPosition(
     isSanctuaryPoint(endPos, gameState.boardFeatures) &&
     isSanctuaryOccupied(endPos, gameState.dots, gameState.boardFeatures, movingDotId)
   ) {
-    return 'Sanctuary region is occupied — only one dot may rest in the four-dot zone.';
+    return 'Sanctuary hex is occupied — only one dot may rest there.';
   }
 
   return null;

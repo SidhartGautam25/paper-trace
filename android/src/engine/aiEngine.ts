@@ -1,5 +1,6 @@
 import { GameState, Dot, TokenPool, Direction, Point } from '../types/game';
-import { getDestination, isWithinBounds } from './geometry';
+import { getCellsAlongPath, getDestination, isWithinBounds, HEX_DIRECTIONS } from './geometry';
+import { pathCrossesOwnTrail } from './characterEngine';
 import { getEffectiveTokenPool } from '../utils/tokenPool';
 import { executeShot } from './paperEngine';
 import { getRequiredDotIdForPlayer, canLandAt } from './boardFeatureEngine';
@@ -34,15 +35,18 @@ export function getLegalMoves(gameState: GameState): AIMove[] {
     .map(Number)
     .filter((val) => activePool[val] > 0);
 
-  const directions: Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const directions: Direction[] = HEX_DIRECTIONS;
 
   for (const dot of eligibleDots) {
     for (const token of availableTokens) {
       for (const dir of directions) {
         const dest = getDestination(dot.currentPos, dir, token);
+        const path = getCellsAlongPath(dot.currentPos, dest);
         if (
           isWithinBounds(dest) &&
-          canLandAt(dest, dot.id, gameState.dots, gameState.boardFeatures)
+          path.every(isWithinBounds) &&
+          canLandAt(dest, dot.id, gameState.dots, gameState.boardFeatures) &&
+          !pathCrossesOwnTrail(dot.id, path, gameState.dots)
         ) {
           legalMoves.push({
             dotId: dot.id,
