@@ -38,7 +38,7 @@ interface GridCanvasProps {
   p2DotColor: string;
   p2LineColor: string;
   selectedLines: string[];
-  characterLoadout: [CharacterId, CharacterId, CharacterId];
+  characterLoadout: CharacterId[];
   currencyRegions: CurrencyRegion[];
   boardFeatures: BoardFeatureInstance[];
   maxHeight: number;

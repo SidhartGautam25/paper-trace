@@ -89,7 +89,7 @@ export default function SettingsScreen() {
     params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow']
   );
 
-  const [characterLoadout, setCharacterLoadout] = useState<[CharacterId, CharacterId, CharacterId]>(
+  const [characterLoadout, setCharacterLoadout] = useState<CharacterId[]>(() =>
     parseCharacterLoadout(params.characters)
   );
 
@@ -99,9 +99,9 @@ export default function SettingsScreen() {
     }
   }, [params.characters]);
 
-  const setSlotCharacter = (slot: 0 | 1 | 2, charId: CharacterId) => {
+  const setSlotCharacter = (slot: number, charId: CharacterId) => {
     setCharacterLoadout((prev) => {
-      const next: [CharacterId, CharacterId, CharacterId] = [...prev];
+      const next: CharacterId[] = [...prev];
       next[slot] = charId;
       return next;
     });

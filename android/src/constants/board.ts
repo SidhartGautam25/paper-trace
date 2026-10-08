@@ -5,7 +5,7 @@ export const GRID_CONFIG = {
   ROWS: 25,
   COLS: 15,
   CELL_SIZE: 48,
-  MAX_LINE_HISTORY: 3,
+  MAX_LINE_HISTORY: 4,
 };
 
 export const INITIAL_TOKEN_POOL: TokenPool = {
@@ -29,14 +29,16 @@ const DOT_POSITIONS: { id: string; player: 1 | 2; pos: { r: number; c: number } 
 ];
 
 export function createInitialDots(
-  loadout: [CharacterId, CharacterId, CharacterId] = DEFAULT_CHARACTER_LOADOUT
+  playerLoadout: CharacterId[] = DEFAULT_CHARACTER_LOADOUT,
+  botLoadout: CharacterId[] = playerLoadout
 ): Dot[] {
   return DOT_POSITIONS.map((def) => {
     const slot = parseInt(def.id.split('_')[1], 10) - 1;
+    const loadout = def.player === 1 ? playerLoadout : botLoadout;
     return {
       id: def.id,
       player: def.player,
-      characterId: loadout[slot] ?? 'reaper',
+      characterId: loadout[slot] ?? 'classic',
       currentPos: { ...def.pos },
       history: [],
       isAlive: true,

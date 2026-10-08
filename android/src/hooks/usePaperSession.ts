@@ -8,12 +8,12 @@ import {
   createFreshCurrencyRegions,
 } from '../constants/board';
 import { createBoardFeatures } from '../constants/boardFeaturePlacements';
-import { executeShot, hasAnyValidMoves, resolveEndGameWinner } from '../engine/paperEngine';
+import { executeShot, hasAnyValidMoves } from '../engine/paperEngine';
 import { getRequiredDotIdForPlayer } from '../engine/boardFeatureEngine';
 import { refillTokenPoolIfEmpty } from '../utils/tokenPool';
 import { recordGameOutcome } from '../utils/stats';
 import { getBestMove } from '../engine/aiEngine';
-import { getCharacter } from '../constants/characters';
+import { getCharacter, DEFAULT_CHARACTER_LOADOUT } from '../constants/characters';
 import { EMPTY_WALLET } from '../utils/wallet';
 import { addToWallet } from '../utils/wallet';
 import { appendMatchRecord } from '../utils/matchHistory';
@@ -30,9 +30,10 @@ function getCharacterLabel(dotId: string, dots: Dot[]): string {
 
 export function usePaperSession(
   initialDifficulty: 'easy' | 'medium' | 'hard' = 'medium',
-  characterLoadout: [CharacterId, CharacterId, CharacterId]
+  characterLoadout: CharacterId[] = DEFAULT_CHARACTER_LOADOUT,
+  botLoadout: CharacterId[] = characterLoadout
 ) {
-  const [dots, setDots] = useState<Dot[]>(() => createInitialDots(characterLoadout));
+  const [dots, setDots] = useState<Dot[]>(() => createInitialDots(characterLoadout, botLoadout));
   const [player1Tokens, setPlayer1Tokens] = useState<TokenPool>(INITIAL_TOKEN_POOL);
   const [player2Tokens, setPlayer2Tokens] = useState<TokenPool>(INITIAL_TOKEN_POOL);
   const [activePlayer, setActivePlayer] = useState<1 | 2>(1);
@@ -89,12 +90,8 @@ export function usePaperSession(
   }, [activePlayer, winner]);
 
   useEffect(() => {
-    if (activePlayer === 1 && !winner) {
-      if (!hasAnyValidMoves(1, dots, player1Tokens, boardFeatures)) {
-        setWinner(resolveEndGameWinner(dots));
-      }
-    }
-  }, [activePlayer, winner, dots, player1Tokens, boardFeatures]);
+    setDifficulty(initialDifficulty);
+  }, [initialDifficulty]);
 
   useEffect(() => {
     if (winner === null) {
@@ -198,7 +195,8 @@ export function usePaperSession(
           setActivePlayer(1);
         }
       } else {
-        setWinner(resolveEndGameWinner(dots));
+        setHistoryLogs((prev) => ['Bot has no available moves. Turn passed to Player.', ...prev]);
+        setActivePlayer(1);
       }
       setIsAiThinking(false);
     }, 800);
@@ -274,8 +272,14 @@ export function usePaperSession(
     return { success: false, error: result.error };
   };
 
+  const passTurn = () => {
+    if (activePlayer !== 1 || winner || isBotBlocked) return;
+    setActivePlayer(2);
+    setHistoryLogs((prev) => ['Player passed turn.', ...prev]);
+  };
+
   const resetGame = () => {
-    setDots(createInitialDots(characterLoadout));
+    setDots(createInitialDots(characterLoadout, botLoadout));
     setPlayer1Tokens(INITIAL_TOKEN_POOL);
     setPlayer2Tokens(INITIAL_TOKEN_POOL);
     setActivePlayer(1);
@@ -316,7 +320,9 @@ export function usePaperSession(
     selectToken,
     selectDirection,
     executeMove,
+    passTurn,
     resetGame,
     characterLoadout,
+    botLoadout,
   };
 }

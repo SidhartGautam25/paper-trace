@@ -5,7 +5,7 @@ export interface MatchRecord {
   timestamp: number;
   difficulty: 'easy' | 'medium' | 'hard';
   winner: 1 | 2;
-  characterIds: [CharacterId, CharacterId, CharacterId];
+  characterIds: CharacterId[];
   earnings: PlayerWallet;
   moveCount: number;
 }

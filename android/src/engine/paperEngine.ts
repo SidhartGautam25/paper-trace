@@ -204,7 +204,7 @@ export function executeShot(
     return failResult(gameState, 'Shot exceeds grid boundaries.');
   }
   if (pathCrossesOwnTrail(movingDotId, pathCells, dots)) {
-    return failResult(gameState, 'That move touches your own trail.');
+    return failResult(gameState, 'Move blocked: touches teammate line or crosses own trail.');
   }
   const touchedPoints = getMoveTouchedPoints(startPos, pathCells);
 
@@ -377,13 +377,6 @@ export function executeShot(
     winner = 2;
   } else if (p1AliveCount === 0 && p2AliveCount === 0) {
     winner = activePlayer;
-  } else {
-    const nextPlayerPool = getEffectiveTokenPool(
-      nextPlayer === 1 ? updatedPlayer1Tokens : updatedPlayer2Tokens
-    );
-    if (!hasAnyValidMoves(nextPlayer, resolvedDots, nextPlayerPool, gameState.boardFeatures)) {
-      winner = resolveEndGameWinner(resolvedDots);
-    }
   }
 
   return {

@@ -27,73 +27,72 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     id: 'classic',
     name: 'Classic',
     title: 'Standard Issue',
-    description: 'Balanced operator with a full three-segment trail.',
-    powerName: 'No Power',
-    powerDescription: 'Standard three-line trail. Shape: round dot.',
+    description: 'Balanced operator with a four-segment trail.',
+    powerName: 'Full Trail',
+    powerDescription: 'Last 4 moves visible. Whole body can be touched and killed.',
     shape: 'circle',
     dotColor: '#94A3B8',
     lineColor: '#CBD5E1',
     lineStyle: 'solid',
-    maxTrailLength: 3,
-    visibleTrailLength: 3,
+    maxTrailLength: 4,
+    visibleTrailLength: 4,
     power: 'none',
   },
   nova: {
     id: 'nova',
     name: 'Nova',
     title: 'Star Striker',
-    description: 'Light footprint — only two trail segments stay on the board.',
-    powerName: 'Short Trail',
-    powerDescription: 'Only 2 active trail lines. Shape: star.',
+    description: 'Agile striker with 3 active trail segments.',
+    powerName: 'Agile Trail',
+    powerDescription: '3 active trail lines. Shape: star.',
     shape: 'star',
     dotColor: '#A855F7',
     lineColor: '#C084FC',
     lineStyle: 'dotted',
     trailAccentColor: '#9F5AFF',
-    maxTrailLength: 2,
-    visibleTrailLength: 2,
+    maxTrailLength: 3,
+    visibleTrailLength: 3,
     power: 'short_trail',
   },
   bulwark: {
     id: 'bulwark',
     name: 'Bulwark',
     title: 'Frontline Guard',
-    description: 'Heavy unit — dot and leading line cannot be cut.',
-    powerName: 'Armored Front',
-    powerDescription:
-      '3 active lines. Only the line attached to your dot is armored — cut the 2nd or 3rd line to kill.',
+    description: 'Heavy defense unit with only 2 trail segments.',
+    powerName: 'Compact Trail',
+    powerDescription: 'Only 2 active trail lines. Shape: arrow.',
     shape: 'arrow',
     dotColor: '#06B6D4',
     lineColor: '#22D3EE',
     lineStyle: 'glow',
     trailAccentColor: '#00F5D4',
-    maxTrailLength: 3,
-    visibleTrailLength: 3,
+    maxTrailLength: 2,
+    visibleTrailLength: 2,
     power: 'armored_front',
   },
   reaper: {
     id: 'reaper',
     name: 'Reaper',
-    title: 'Trap Weaver',
-    description: 'Two visible lines hide a lethal ghost trail.',
-    powerName: 'Ghost Trap',
-    powerDescription:
-      '2 visible lines + 1 hidden trap line. Red dots mark lethal points. Shape: hexagon.',
+    title: 'Shadow Ghost',
+    description: 'Elusive unit leaving only 1 active trail segment.',
+    powerName: 'Ghost Trail',
+    powerDescription: 'Only 1 active trail line. Minimal vulnerability. Shape: hexagon.',
     shape: 'hexagon',
     dotColor: '#F59E0B',
     lineColor: '#FBBF24',
     lineStyle: 'dashed',
     trailAccentColor: '#FFC400',
-    maxTrailLength: 3,
-    visibleTrailLength: 2,
+    maxTrailLength: 1,
+    visibleTrailLength: 1,
     power: 'ghost_trap',
   },
 };
 
-export const DEFAULT_CHARACTER_LOADOUT: [CharacterId, CharacterId, CharacterId] = [
+export const DEFAULT_CHARACTER_LOADOUT: CharacterId[] = [
   'classic',
-  'nova',
-  'bulwark',
+  'classic',
+  'classic',
+  'classic',
 ];
 
 export const CHARACTER_LIST = Object.values(CHARACTERS);
@@ -112,17 +111,15 @@ function normalizeCharacterId(raw: string): CharacterId | null {
 }
 
 /** Normalize any persisted or route loadout to valid character ids. */
-export function sanitizeCharacterLoadout(
-  loadout: unknown
-): [CharacterId, CharacterId, CharacterId] {
-  if (!Array.isArray(loadout) || loadout.length !== 3) {
+export function sanitizeCharacterLoadout(loadout: unknown): CharacterId[] {
+  if (!Array.isArray(loadout) || loadout.length === 0) {
     return DEFAULT_CHARACTER_LOADOUT;
   }
   const parsed = loadout
     .map((id) => normalizeCharacterId(String(id)))
     .filter((p): p is CharacterId => p !== null);
-  if (parsed.length !== 3) return DEFAULT_CHARACTER_LOADOUT;
-  return parsed as [CharacterId, CharacterId, CharacterId];
+  if (parsed.length === 0) return DEFAULT_CHARACTER_LOADOUT;
+  return parsed;
 }
 
 export function getCharacter(id: CharacterId): CharacterDefinition {
@@ -131,14 +128,14 @@ export function getCharacter(id: CharacterId): CharacterDefinition {
 
 export function getCharacterForDot(
   dotId: string,
-  loadout: [CharacterId, CharacterId, CharacterId]
+  loadout: CharacterId[]
 ): CharacterDefinition {
   const slot = parseInt(dotId.split('_')[1] || '1', 10) - 1;
-  if (slot >= loadout.length) return getCharacter('reaper');
-  return getCharacter(loadout[Math.max(0, slot)]);
+  const id = loadout[slot] ?? 'classic';
+  return getCharacter(id);
 }
 
-export function parseCharacterLoadout(raw?: string): [CharacterId, CharacterId, CharacterId] {
+export function parseCharacterLoadout(raw?: string): CharacterId[] {
   if (!raw) return DEFAULT_CHARACTER_LOADOUT;
   return sanitizeCharacterLoadout(raw.split(',').filter(Boolean));
 }

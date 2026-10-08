@@ -21,10 +21,12 @@ import { parseCharacterLoadout } from '../constants/characters';
 import { CollectionPopup } from '../components/ui/CollectionPopup';
 import { formatWalletSummary } from '../utils/wallet';
 import { GRID_CONFIG } from '../constants/board';
+import { getLevelById, getPlayerLoadoutForLevel, getBotLoadoutForLevel } from '../constants/levels';
 
 export default function GameScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    levelId?: string;
     difficulty?: string;
     themeId?: string;
     killEffect?: string;
@@ -37,10 +39,15 @@ export default function GameScreen() {
   }>();
   const insets = useSafeAreaInsets();
   
-  // Extract inputs or fallback to defaults
+  // Declarative Level Setup
+  const levelNum = params.levelId ? parseInt(params.levelId, 10) : 1;
+  const activeLevel = getLevelById(isNaN(levelNum) ? 1 : levelNum);
+
+  // Difficulty is decided declaratively from level config, with param override if provided
   const difficulty = (params.difficulty === 'easy' || params.difficulty === 'medium' || params.difficulty === 'hard')
     ? params.difficulty
-    : 'medium';
+    : activeLevel.difficulty;
+
   const themeId = params.themeId || 'cyber-neon';
   const killEffect = (params.killEffect === 'collapse' || params.killEffect === 'explode' || params.killEffect === 'dissolve' || params.killEffect === 'monster' || params.killEffect === 'hammer' || params.killEffect === 'burn' || params.killEffect === 'firecracker')
     ? params.killEffect
@@ -56,14 +63,17 @@ export default function GameScreen() {
   const p2DotColor = params.p2DotColor || themeColors.p2Shades[0];
   const p2LineColor = params.p2LineColor || themeColors.p2Shades[0];
 
-  // Custom Lines
+  // Custom Lines & Loadouts
   const selectedLines = params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow'];
-  const characterLoadout = parseCharacterLoadout(params.characters);
+  const characterLoadout = params.characters
+    ? parseCharacterLoadout(params.characters)
+    : getPlayerLoadoutForLevel(activeLevel);
+  const botLoadout = getBotLoadoutForLevel(activeLevel);
 
   // Layout Measurement state for percentage-wise dynamic allocation
   const [boardLayout, setBoardLayout] = useState<{ width: number; height: number } | null>(null);
 
-  // Initialize session
+  // Initialize session with declarative level configs
   const {
     dots,
     player1Tokens,
@@ -84,7 +94,7 @@ export default function GameScreen() {
     selectDirection,
     executeMove,
     resetGame,
-  } = usePaperSession(difficulty, characterLoadout);
+  } = usePaperSession(difficulty, characterLoadout, botLoadout);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -133,10 +143,16 @@ export default function GameScreen() {
   return (
     <View style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
       {/* Top Status Bar Spacer */}
-      <View style={{ height: Math.max(insets.top, 8), backgroundColor: themeColors.background, justifyContent: 'flex-end' }}>
+      <View style={{ height: Math.max(insets.top, 8) + 32, backgroundColor: themeColors.background, justifyContent: 'center', alignItems: 'center' }}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
           <Text style={[styles.backText, { color: themeColors.textSecondary }]}>←</Text>
         </TouchableOpacity>
+        <Text style={{ color: themeColors.textPrimary, fontSize: 15, fontWeight: '700' }}>
+          {activeLevel.name}: {activeLevel.title}
+        </Text>
+        <Text style={{ color: themeColors.textSecondary, fontSize: 11, fontWeight: '500' }}>
+          {activeLevel.description}
+        </Text>
       </View>
       <StatusBar
         barStyle={activeTheme.dark ? 'light-content' : 'dark-content'}
@@ -231,34 +247,40 @@ export default function GameScreen() {
               },
             ]}
           >
-            <Text style={[styles.overlaySubtitle, { color: themeColors.textSecondary }]}>Match Over</Text>
+            <Text style={[styles.overlaySubtitle, { color: themeColors.textSecondary }]}>
+              {activeLevel.name} • {activeLevel.title}
+            </Text>
             <Text style={[styles.overlayTitle, { color: winner === 1 ? themeColors.p1Shades[0] : '#EF4444' }]}>
               {winner === 1 ? '🎉 VICTORY' : '💀 DEFEAT'}
             </Text>
             <Text style={[styles.overlayDesc, { color: themeColors.textSecondary }]}>
               {winner === 1
-                ? 'You have successfully out-inked the Bot!'
-                : 'The Bot has defeated you in battle.'}
+                ? 'All 4 opponent dots eliminated!'
+                : 'All 4 of your dots were eliminated.'}
             </Text>
 
             <View style={[styles.overlayScores, { borderColor: themeColors.border }]}>
-              <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Treasure Collected</Text>
-              <Text style={[styles.scoreValue, { color: themeColors.textPrimary, textAlign: 'center', marginBottom: 12 }]}>
-                {formatWalletSummary(matchEarnings)}
-              </Text>
-              <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Base Distance Scores</Text>
+              <Text style={[styles.scoreTitle, { color: themeColors.textPrimary }]}>Dots Remaining</Text>
               <View style={styles.scoreRow}>
-                <Text style={[styles.scoreLabel, { color: themeColors.p1Shades[0] }]}>You:</Text>
+                <Text style={[styles.scoreLabel, { color: themeColors.p1Shades[0] }]}>Player Alive:</Text>
                 <Text style={[styles.scoreValue, { color: themeColors.textPrimary }]}>
-                  {dots.filter((d) => d.player === 1 && d.isAlive).reduce((sum, d) => sum + (GRID_CONFIG.ROWS - 1 - d.currentPos.r), 0)} pts
+                  {dots.filter((d) => d.player === 1 && d.isAlive).length} / 4
                 </Text>
               </View>
               <View style={styles.scoreRow}>
-                <Text style={[styles.scoreLabel, { color: themeColors.p2Shades[0] }]}>Bot:</Text>
+                <Text style={[styles.scoreLabel, { color: themeColors.p2Shades[0] }]}>Bot Alive:</Text>
                 <Text style={[styles.scoreValue, { color: themeColors.textPrimary }]}>
-                  {dots.filter((d) => d.player === 2 && d.isAlive).reduce((sum, d) => sum + d.currentPos.r, 0)} pts
+                  {dots.filter((d) => d.player === 2 && d.isAlive).length} / 4
                 </Text>
               </View>
+              {matchEarnings && (matchEarnings.gold > 0 || matchEarnings.silver > 0 || matchEarnings.money > 0) && (
+                <>
+                  <Text style={[styles.scoreTitle, { color: themeColors.textPrimary, marginTop: 10 }]}>Treasure Collected</Text>
+                  <Text style={[styles.scoreValue, { color: themeColors.textPrimary, textAlign: 'center' }]}>
+                    {formatWalletSummary(matchEarnings)}
+                  </Text>
+                </>
+              )}
             </View>
 
             <TouchableOpacity
@@ -274,7 +296,7 @@ export default function GameScreen() {
               onPress={handleBack}
               activeOpacity={0.8}
             >
-              <Text style={[styles.overlayButtonSecondaryText, { color: themeColors.textPrimary }]}>Go to Menu</Text>
+              <Text style={[styles.overlayButtonSecondaryText, { color: themeColors.textPrimary }]}>Level Select</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
