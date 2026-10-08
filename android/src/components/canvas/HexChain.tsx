@@ -5,7 +5,7 @@ import { cellToPixel, hexPolygonPath } from '../../engine/geometry';
 
 export interface HexChainCell {
   point: Point;
-  /** Character (or classic player) fill inside the white ring. */
+  /** Fill inside the white ring (head uses character color, body uses player blue/red). */
   fill?: string;
   /** Head hex uses a double white ring; body uses a single solid ring. */
   isHead?: boolean;
@@ -18,12 +18,12 @@ interface HexChainProps {
   offsetX: number;
   offsetY: number;
   /**
-   * trail: player-colored rim, white ring(s), character-colored fill.
+   * trail: black rim, white ring(s), player/character fill.
    * hint: pale dashed hexes, kept visually separate from a real line.
    * threat: full trail-style hexes in kill colors (drawn above real trails).
    */
   variant?: 'trail' | 'hint' | 'threat';
-  /** Player blue/red outer rim on trail hexes. */
+  /** Black outer rim on trail hexes. */
   borderColor?: string;
 }
 
@@ -72,7 +72,7 @@ export const HexChain: React.FC<HexChainProps> = ({
   offsetX,
   offsetY,
   variant = 'trail',
-  borderColor = '#1A1A1A',
+  borderColor = '#000000',
 }) => {
   if (cells.length === 0) return null;
 

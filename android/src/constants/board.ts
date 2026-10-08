@@ -61,11 +61,15 @@ export const INITIAL_CURRENCY_REGIONS: CurrencyRegion[] = [
 ];
 
 export function createFreshCurrencyRegions(): CurrencyRegion[] {
+  // Currency resources disabled from board effect for now
+  return [];
+  /*
   return INITIAL_CURRENCY_REGIONS.map((r) => ({
     ...r,
     origin: { ...r.origin },
     collected: false,
   }));
+  */
 }
 
 /** @deprecated */

@@ -17,8 +17,12 @@ assertUniqueRegionOrigins([
 ]);
 
 export function createBoardFeatures(): BoardFeatureInstance[] {
+  // Board position powers disabled from board effect for now
+  return [];
+  /*
   return BOARD_FEATURE_PLACEMENTS.map((f) => ({
     ...f,
     origin: { ...f.origin },
   }));
+  */
 }

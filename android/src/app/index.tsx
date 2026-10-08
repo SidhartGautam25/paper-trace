@@ -55,7 +55,7 @@ export default function HomeScreen() {
         return { p1: '#9B51E0', p2: '#FE53BB' };
       case 'cyber-neon':
       default:
-        return { p1: '#00F2FF', p2: '#FE53BB' };
+        return { p1: '#00E5FF', p2: '#FF3B6B' };
     }
   };
 

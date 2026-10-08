@@ -28,14 +28,14 @@ export const GAME_THEMES: GameTheme[] = [
       boardBackground: '#020617', // Slate 950
       gridLine: 'rgba(51, 65, 85, 0.2)', // Slate 700 with opacity
       gridDot: '#475569',         // Slate 600
-      p1Shades: ['#2563EB', '#60A5FA', '#06B6D4'], // Royal Blue, Sky Blue, Cyan
-      p2Shades: ['#DC2626', '#F87171', '#F43F5E'], // Crimson Red, Coral Red, Rose Pink
+      p1Shades: ['#00E5FF', '#60A5FA', '#06B6D4'], // Electric Blue, Sky Blue, Cyan
+      p2Shades: ['#FF3B6B', '#F87171', '#F43F5E'], // Neon Red, Coral Red, Rose Pink
       textPrimary: '#F8FAFC',
       textSecondary: '#94A3B8',
       cardBackground: '#1E293B',
       border: '#334155',
       shadowColor: '#000000',
-      accent: '#2563EB',
+      accent: '#00E5FF',
     },
   },
   {

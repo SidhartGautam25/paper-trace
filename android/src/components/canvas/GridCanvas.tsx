@@ -254,30 +254,34 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     return ordered;
   };
 
-  const trailFillForDot = (dot: Dot) => {
+  const trailColor = (player: 1 | 2) => (player === 1 ? '#00E5FF' : '#FF3B6B');
+
+  const trailHeadFillForDot = (dot: Dot) => {
     const character = getCharacterForDot(dot.id, characterLoadout);
-    return character.trailAccentColor ?? trailColor(dot.player);
+    return character.trailAccentColor ?? character.dotColor;
   };
 
   const trailCellsFor = (dot: Dot) => {
-    const fill = trailFillForDot(dot);
+    const headFill = trailHeadFillForDot(dot);
+    const bodyFill = trailColor(dot.player);
     const points = orderedTrailPoints(dot);
     const last = points.length - 1;
-    return points.map((point, index) => ({
-      point,
-      fill,
-      isHead: index === last,
-    }));
+    return points.map((point, index) => {
+      const isHead = index === last;
+      return {
+        point,
+        fill: isHead ? headFill : bodyFill,
+        isHead,
+      };
+    });
   };
-
-  const trailColor = (player: 1 | 2) => (player === 1 ? '#00AEFF' : '#FF3B6B');
 
   const renderGhostTraps = () =>
     dots.map((dot) => {
       if (!dot.isAlive) return null;
       const trapPoints = getTrapPointsForDot(dot);
       if (trapPoints.length === 0) return null;
-      const bodyFill = trailFillForDot(dot);
+      const bodyFill = trailColor(dot.player);
       return (
         <HexChain
           key={`ghost_${dot.id}`}
@@ -291,7 +295,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
           offsetX={offsetX}
           offsetY={offsetY}
           variant="trail"
-          borderColor={trailColor(dot.player)}
+          borderColor="#000000"
         />
       );
     });
@@ -408,7 +412,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               offsetX={offsetX}
               offsetY={offsetY}
               variant="trail"
-              borderColor={trailColor(dot.player)}
+              borderColor="#000000"
             />
           );
         })}
