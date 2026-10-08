@@ -4,7 +4,7 @@ import {
   BoardFeatureMoveResult,
   BoardFeatureTypeId,
 } from '../types/boardFeatures';
-import { getConnectedTrailHistory } from '../engine/characterEngine';
+import { getConnectedTrailHistory } from '../engine/geometry';
 
 const shieldZone: BoardFeatureDefinition = {
   typeId: 'shield_zone',

@@ -33,37 +33,6 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.cardBackground, borderBottomColor: themeColors.border }]}>
-      {/* Top Row: Back Navigation & Restart */}
-      <View style={styles.topRow}>
-        <TouchableOpacity
-          style={[
-            styles.navButton,
-            {
-              borderColor: themeColors.border,
-              backgroundColor: themeColors.border + '22',
-            },
-          ]}
-          onPress={onBack}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.navText, { color: themeColors.textSecondary }]}>← Menu</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.resetButton,
-            {
-              borderColor: themeColors.accent,
-              backgroundColor: themeColors.accent + '22',
-            },
-          ]}
-          onPress={onReset}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.resetText, { color: themeColors.accent }]}>Reset Game</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Info Row: Displays Selected Difficulty level */}
       <View style={styles.infoRow}>
         <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>
@@ -149,7 +118,8 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    padding: Dimensions.get('window').height < 750 ? 10 : 16,
+    paddingVertical: Dimensions.get('window').height < 750 ? 6 : 10,
+    paddingHorizontal: 12,
     borderBottomWidth: 1.5,
     elevation: 4,
   },

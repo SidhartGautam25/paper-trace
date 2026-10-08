@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Circle, G, Rect } from 'react-native-svg';
@@ -23,7 +23,7 @@ interface GridCanvasProps {
   themeColors: any;
   killEffect: 'collapse' | 'explode' | 'dissolve' | 'monster' | 'hammer' | 'burn' | 'firecracker';
   onSelectDirection: (dir: Direction) => void;
-  onGestureEnd: () => void;
+  onGestureEnd: (dir: Direction, dotId: string) => void;
   onGestureStart?: () => void;
   p1DotColor: string;
   p1LineColor: string;
@@ -77,11 +77,26 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const boardHeight = (GRID_CONFIG.ROWS - 1) * cellSize + offsetY * 2;
 
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const gestureDirRef = useRef<Direction | null>(null);
+  const gestureDotIdRef = useRef<string | null>(null);
+
+  const findPlayerDotAtLocal = (localX: number, localY: number): Dot | null => {
+    const hitRadius = 40;
+    for (const dot of dots) {
+      if (!dot.isAlive || dot.player !== activePlayer) continue;
+      const cx = dot.currentPos.c * cellSize + offsetX;
+      const cy = dot.currentPos.r * cellSize + offsetY;
+      const dx = localX - cx;
+      const dy = localY - cy;
+      if (dx * dx + dy * dy <= hitRadius * hitRadius) return dot;
+    }
+    return null;
+  };
 
   // Helper to resolve 8-way swipe direction from coordinates delta
   const getGestureDirection = (dx: number, dy: number): Direction | null => {
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 15) return null; // Prevent jitter on minor drags
+    if (dist < 8) return null;
 
     let angle = Math.atan2(dy, dx) * (180 / Math.PI);
     if (angle < 0) {
@@ -98,43 +113,60 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     return 'NE';
   };
 
-  const handleStart = (clientX: number, clientY: number) => {
-    if (!selectedDotId || selectedToken === null) return;
-    setDragStart({ x: clientX, y: clientY });
+  const handleStart = (localX: number, localY: number) => {
+    if (selectedToken === null) return;
+
+    let dotId = selectedDotId;
+    const hitDot = findPlayerDotAtLocal(localX, localY);
+    if (hitDot) {
+      dotId = hitDot.id;
+      onSelectDot(hitDot.id);
+    }
+    if (!dotId) return;
+
+    gestureDotIdRef.current = dotId;
+    gestureDirRef.current = null;
+    setDragStart({ x: localX, y: localY });
     onGestureStart?.();
   };
 
-  const handleMove = (clientX: number, clientY: number) => {
-    if (!selectedDotId || selectedToken === null || !dragStart) return;
-    const dx = clientX - dragStart.x;
-    const dy = clientY - dragStart.y;
+  const handleMove = (localX: number, localY: number) => {
+    if (!gestureDotIdRef.current || selectedToken === null || !dragStart) return;
+    const dx = localX - dragStart.x;
+    const dy = localY - dragStart.y;
 
     const dir = getGestureDirection(dx, dy);
     if (dir) {
+      gestureDirRef.current = dir;
       onSelectDirection(dir);
     }
   };
 
   const handleEnd = () => {
-    if (!dragStart) return;
+    const dir = gestureDirRef.current;
+    const dotId = gestureDotIdRef.current;
+    gestureDirRef.current = null;
+    gestureDotIdRef.current = null;
     setDragStart(null);
-    if (selectedDirection) {
-      onGestureEnd();
+    if (dir && dotId) {
+      onGestureEnd(dir, dotId);
     }
   };
+
+  const canSwipeToMove = selectedToken !== null && (selectedDotId !== null || activePlayer === 1);
 
   // Direct Event Mappers for both Touch (mobile) and Mouse (desktop web)
   const onTouchStartLocal = (e: any) => {
     const touch = e.nativeEvent.touches?.[0];
     if (touch) {
-      handleStart(touch.pageX, touch.pageY);
+      handleStart(touch.locationX, touch.locationY);
     }
   };
 
   const onTouchMoveLocal = (e: any) => {
     const touch = e.nativeEvent.touches?.[0];
     if (touch) {
-      handleMove(touch.pageX, touch.pageY);
+      handleMove(touch.locationX, touch.locationY);
     }
   };
 
@@ -143,13 +175,12 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   };
 
   const onMouseDownLocal = (e: any) => {
-    // Left-click dragging only
     if (e.nativeEvent.button !== 0) return;
-    handleStart(e.nativeEvent.clientX, e.nativeEvent.clientY);
+    handleStart(e.nativeEvent.locationX, e.nativeEvent.locationY);
   };
 
   const onMouseMoveLocal = (e: any) => {
-    handleMove(e.nativeEvent.clientX, e.nativeEvent.clientY);
+    handleMove(e.nativeEvent.locationX, e.nativeEvent.locationY);
   };
 
   const onMouseUpLocal = () => {
@@ -366,6 +397,8 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   return (
     <View
       style={[styles.container, { shadowColor: themeColors.shadowColor }]}
+      onStartShouldSetResponder={() => selectedToken !== null}
+      onMoveShouldSetResponder={() => selectedToken !== null}
       onTouchStart={onTouchStartLocal}
       onTouchMove={onTouchMoveLocal}
       onTouchEnd={onTouchEndLocal}
@@ -458,10 +491,12 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         })}
       </Svg>
 
-      {/* Absolute overlay for reliable cross-platform tap targets */}
-      <View style={[StyleSheet.absoluteFill, { pointerEvents: 'box-none' }]}>
+      {/* Dot taps — disabled while swiping so gestures pass through to the board */}
+      <View
+        style={[StyleSheet.absoluteFill, { pointerEvents: canSwipeToMove ? 'none' : 'box-none' }]}
+      >
         {dots.map((dot) => {
-          if (!dot || !dot.isAlive) return null;
+          if (!dot || !dot.isAlive || dot.player !== activePlayer) return null;
           // Calculate click target center coordinates
           const cx = dot.currentPos.c * cellSize + offsetX;
           const cy = dot.currentPos.r * cellSize + offsetY;

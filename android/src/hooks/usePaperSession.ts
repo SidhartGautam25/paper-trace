@@ -240,18 +240,23 @@ export function usePaperSession(
     setSelectedDirection(dir);
   };
 
-  const executeMove = (): { success: boolean; error?: string } => {
+  const executeMove = (
+    directionOverride?: Direction,
+    dotIdOverride?: string
+  ): { success: boolean; error?: string } => {
     if (activePlayer !== 1 || winner || isBotBlocked) {
       return { success: false, error: isBotBlocked ? 'Please wait…' : 'Not your turn.' };
     }
-    if (!selectedDotId || selectedToken === null || !selectedDirection) {
+    const direction = directionOverride ?? selectedDirection;
+    const dotId = dotIdOverride ?? selectedDotId;
+    if (!dotId || selectedToken === null || !direction) {
       return { success: false, error: 'Please choose a Dot, Token, and Direction.' };
     }
 
-    const result = executeShot(selectedDotId, selectedDirection, selectedToken, buildGameState());
+    const result = executeShot(dotId, direction, selectedToken, buildGameState());
     if (result.success) {
-      const playerDotLabel = getCharacterLabel(selectedDotId, dots);
-      let logMsg = `${playerDotLabel} shoots ${selectedDirection} (dist ${selectedToken})`;
+      const playerDotLabel = getCharacterLabel(dotId, dots);
+      let logMsg = `${playerDotLabel} shoots ${direction} (dist ${selectedToken})`;
       if (result.killedDots.length > 0) {
         const killedLabels = result.killedDots.map((id) => getCharacterLabel(id, result.dots));
         logMsg += ` 🎯 KILLS ${killedLabels.join(', ')}!`;

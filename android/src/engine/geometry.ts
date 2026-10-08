@@ -1,4 +1,4 @@
-import { Point, Direction } from '../types/game';
+import { Point, Direction, LineSegment } from '../types/game';
 import { GRID_CONFIG } from '../constants/board';
 
 /**
@@ -71,6 +71,30 @@ export function getCellsAlongPath(start: Point, end: Point): Point[] {
   }
 
   return cells;
+}
+
+/**
+ * Keeps only segments that form a continuous path ending at `anchor`.
+ * When a middle segment is cut (self-cross), older disconnected pieces are dropped.
+ */
+export function getConnectedTrailHistory(
+  history: LineSegment[],
+  anchor: Point
+): LineSegment[] {
+  if (history.length === 0) return history;
+
+  const connected: LineSegment[] = [];
+  let current = anchor;
+
+  for (let i = history.length - 1; i >= 0; i--) {
+    const seg = history[i];
+    if (pointsEqual(seg.end, current)) {
+      connected.unshift(seg);
+      current = seg.start;
+    }
+  }
+
+  return connected;
 }
 
 /**

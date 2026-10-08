@@ -1,7 +1,6 @@
 import { Point, Dot } from '../types/game';
 import { BoardFeatureInstance, BoardFeatureTypeId } from '../types/boardFeatures';
 import { RegionOrigin, getRegionCorners, isPointOnRegion } from '../types/gridRegion';
-import { BOARD_FEATURE_REGISTRY } from './boardFeatureRegistry';
 import { pointsEqual } from '../engine/geometry';
 
 export function getFeaturesAtLanding(
@@ -70,8 +69,6 @@ export function isDotProtectedAtPosition(
   features: BoardFeatureInstance[]
 ): boolean {
   return features.some(
-    (f) =>
-      BOARD_FEATURE_REGISTRY[f.typeId].protectsOccupant === true &&
-      isPointOnRegion(pos, f.origin)
+    (f) => f.typeId === 'shield_zone' && isPointOnRegion(pos, f.origin)
   );
 }

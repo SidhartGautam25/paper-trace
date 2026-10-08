@@ -1,36 +1,18 @@
 import { Dot, LineSegment, Point } from '../types/game';
 import { getCharacter } from '../constants/characters';
-import { getCellsAlongPath, pointsEqual, areSegmentsIntersecting } from './geometry';
-import { isDotProtectedAtPosition } from '../features/boardFeatureQueries';
+import { getCellsAlongPath, pointsEqual, areSegmentsIntersecting, getConnectedTrailHistory } from './geometry';
 import { BoardFeatureInstance } from '../types/boardFeatures';
+import { isPointOnRegion } from '../types/gridRegion';
+
+function isDotProtectedAtPosition(pos: Point, features: BoardFeatureInstance[]): boolean {
+  return features.some((f) => f.typeId === 'shield_zone' && isPointOnRegion(pos, f.origin));
+}
 
 export function getMaxTrailLength(dot: Dot): number {
   return getCharacter(dot.characterId).maxTrailLength;
 }
 
-/**
- * Keeps only segments that form a continuous path ending at `anchor`.
- * When a middle segment is cut (self-cross), older disconnected pieces are dropped.
- */
-export function getConnectedTrailHistory(
-  history: LineSegment[],
-  anchor: Point
-): LineSegment[] {
-  if (history.length === 0) return history;
-
-  const connected: LineSegment[] = [];
-  let current = anchor;
-
-  for (let i = history.length - 1; i >= 0; i--) {
-    const seg = history[i];
-    if (pointsEqual(seg.end, current)) {
-      connected.unshift(seg);
-      current = seg.start;
-    }
-  }
-
-  return connected;
-}
+export { getConnectedTrailHistory } from './geometry';
 
 export function getVisibleTrailSegments(dot: Dot): LineSegment[] {
   const connected = getConnectedTrailHistory(dot.history, dot.currentPos);
