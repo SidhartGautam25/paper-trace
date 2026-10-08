@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { G, Path, Rect } from 'react-native-svg';
 import { Dot, Direction, CharacterId, CurrencyRegion, BoardFeatureInstance } from '../../types/game';
 import { GRID_CONFIG } from '../../constants/board';
-import { HexChain } from './HexChain';
+import { HexChain, TrailRing } from './HexChain';
 import { BaseDotMarker } from './BaseDotMarker';
 import { TrapPointMarkers } from './TrapPointMarkers';
 import {
@@ -219,6 +219,11 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     return getCharacterForDot(dotId, characterLoadout).shape;
   };
 
+  const ringForShape = (shape: DotShape): TrailRing => {
+    if (shape === 'arrow' || shape === 'hexagon') return 'double';
+    return 'solid';
+  };
+
   const trapPoints = getAllTrapPoints(dots);
 
   const hexCells = [];
@@ -237,18 +242,45 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     }
   }
 
-  const trailCellsFor = (dot: Dot) => {
-    const byCell = new Map<string, { point: { r: number; c: number }; fill?: string }>();
-    const body = trailColor(dot.player);
-    const head = headColor(dot.player);
-    getVisibleTrailSegments(dot).forEach((segment) => {
-      const cells = [segment.start, ...getCellsAlongPath(segment.start, segment.end)];
-      for (const point of cells) {
-        byCell.set(`${point.r},${point.c}`, { point, fill: body });
+  const orderedTrailPoints = (dot: Dot) => {
+    const ordered: { r: number; c: number }[] = [];
+    const seen = new Set<string>();
+    const push = (point: { r: number; c: number }) => {
+      const key = `${point.r},${point.c}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      ordered.push(point);
+    };
+    for (const segment of getVisibleTrailSegments(dot)) {
+      push(segment.start);
+      for (const point of getCellsAlongPath(segment.start, segment.end)) {
+        push(point);
       }
+    }
+    push(dot.currentPos);
+    return ordered;
+  };
+
+  const trailCellsFor = (dot: Dot) => {
+    const playerBody = trailColor(dot.player);
+    const playerHead = headColor(dot.player);
+    const character = getCharacterForDot(dot.id, characterLoadout);
+    const accent = character.trailAccentColor;
+    const points = orderedTrailPoints(dot);
+
+    if (!accent || character.shape === 'circle') {
+      return points.map((point, index) => ({
+        point,
+        fill: index === points.length - 1 ? playerHead : playerBody,
+      }));
+    }
+
+    return points.map((point, index) => {
+      const isHead = index === points.length - 1;
+      if (isHead) return { point, fill: accent };
+      const fill = index % 2 === 0 ? playerBody : accent;
+      return { point, fill };
     });
-    byCell.set(`${dot.currentPos.r},${dot.currentPos.c}`, { point: dot.currentPos, fill: head });
-    return Array.from(byCell.values());
   };
 
   const trailColor = (player: 1 | 2) => (player === 1 ? '#3B8BFF' : '#FF4D6A');
@@ -376,6 +408,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               offsetX={offsetX}
               offsetY={offsetY}
               variant="trail"
+              ring={ringForShape(getShapeForDot(dot.id))}
             />
           );
         })}

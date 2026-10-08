@@ -15,6 +15,8 @@ export interface CharacterDefinition {
   dotColor: string;
   lineColor: string;
   lineStyle: LineStyle;
+  /** Board trail stripe color (alternates with player blue/red on Nova, Bulwark, Reaper). */
+  trailAccentColor?: string;
   maxTrailLength: number;
   visibleTrailLength: number;
   power: CharacterPower;
@@ -47,6 +49,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     dotColor: '#9B51E0',
     lineColor: '#B47AFF',
     lineStyle: 'dotted',
+    trailAccentColor: '#9D6BFF',
     maxTrailLength: 2,
     visibleTrailLength: 2,
     power: 'short_trail',
@@ -63,6 +66,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     dotColor: '#00F2FF',
     lineColor: '#00D4FF',
     lineStyle: 'glow',
+    trailAccentColor: '#18D4B8',
     maxTrailLength: 3,
     visibleTrailLength: 3,
     power: 'armored_front',
@@ -79,6 +83,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     dotColor: '#FFB900',
     lineColor: '#FFD54F',
     lineStyle: 'dashed',
+    trailAccentColor: '#F0A500',
     maxTrailLength: 3,
     visibleTrailLength: 2,
     power: 'ghost_trap',

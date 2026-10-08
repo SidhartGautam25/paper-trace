@@ -5,9 +5,11 @@ import { cellToPixel, hexPolygonPath } from '../../engine/geometry';
 
 export interface HexChainCell {
   point: Point;
-  /** Lighter fill for the end of a trail. Black rim and white ring stay the same. */
+  /** Per-hex center fill. Black rim and white ring stay the same. */
   fill?: string;
 }
+
+export type TrailRing = 'solid' | 'double';
 
 interface HexChainProps {
   cells: HexChainCell[];
@@ -21,6 +23,8 @@ interface HexChainProps {
    * threat: a possible move that cuts or lands on an opponent.
    */
   variant?: 'trail' | 'hint' | 'threat';
+  /** White-ring treatment on every hex. Identifies the character. */
+  ring?: TrailRing;
 }
 
 export const HexChain: React.FC<HexChainProps> = ({
@@ -30,6 +34,7 @@ export const HexChain: React.FC<HexChainProps> = ({
   offsetX,
   offsetY,
   variant = 'trail',
+  ring = 'solid',
 }) => {
   if (cells.length === 0) return null;
 
@@ -68,20 +73,29 @@ export const HexChain: React.FC<HexChainProps> = ({
     );
   }
 
-  // Slightly inside the cell so neighboring hexes keep their own rims.
-  const blackRadius = hexSize * 0.9;
-  const whiteRadius = hexSize * 0.76;
-  const fillRadius = hexSize * 0.62;
+  const blackRadius = hexSize * (ring === 'double' ? 0.92 : 0.9);
+  const fillRadius = hexSize * (ring === 'double' ? 0.52 : 0.62);
 
   return (
     <G>
       {cells.map((cell) => {
         const { x, y } = cellToPixel(cell.point, hexSize, offsetX, offsetY);
+        const fill = cell.fill ?? color;
+
         return (
           <G key={`body_${cell.point.r}_${cell.point.c}`}>
             <Path d={hexPolygonPath(x, y, blackRadius)} fill="#1A1A1A" />
-            <Path d={hexPolygonPath(x, y, whiteRadius)} fill="#FFFFFF" />
-            <Path d={hexPolygonPath(x, y, fillRadius)} fill={cell.fill ?? color} />
+            {ring === 'solid' ? (
+              <Path d={hexPolygonPath(x, y, hexSize * 0.76)} fill="#FFFFFF" />
+            ) : null}
+            {ring === 'double' ? (
+              <G>
+                <Path d={hexPolygonPath(x, y, hexSize * 0.84)} fill="#FFFFFF" />
+                <Path d={hexPolygonPath(x, y, hexSize * 0.72)} fill="#1A1A1A" />
+                <Path d={hexPolygonPath(x, y, hexSize * 0.64)} fill="#FFFFFF" />
+              </G>
+            ) : null}
+            <Path d={hexPolygonPath(x, y, fillRadius)} fill={fill} />
           </G>
         );
       })}
