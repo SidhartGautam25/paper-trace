@@ -2,27 +2,30 @@ import { Dot, TokenPool, CharacterId, CurrencyRegion } from '../types/game';
 import { DEFAULT_CHARACTER_LOADOUT } from './characters';
 
 export const GRID_CONFIG = {
-  ROWS: 22,
+  ROWS: 25,
   COLS: 15,
   CELL_SIZE: 48,
   MAX_LINE_HISTORY: 3,
 };
 
 export const INITIAL_TOKEN_POOL: TokenPool = {
-  1: 3,
-  2: 3,
-  3: 3,
-  4: 3,
-  5: 3,
+  1: 4,
+  2: 4,
+  3: 4,
+  4: 4,
+  5: 4,
+  6: 4,
 };
 
 const DOT_POSITIONS: { id: string; player: 1 | 2; pos: { r: number; c: number } }[] = [
-  { id: 'p1_1', player: 1, pos: { r: 21, c: 2 } },
-  { id: 'p1_2', player: 1, pos: { r: 21, c: 7 } },
-  { id: 'p1_3', player: 1, pos: { r: 21, c: 12 } },
-  { id: 'p2_1', player: 2, pos: { r: 0, c: 2 } },
-  { id: 'p2_2', player: 2, pos: { r: 0, c: 7 } },
-  { id: 'p2_3', player: 2, pos: { r: 0, c: 12 } },
+  { id: 'p1_1', player: 1, pos: { r: 24, c: 1 } },
+  { id: 'p1_2', player: 1, pos: { r: 24, c: 5 } },
+  { id: 'p1_3', player: 1, pos: { r: 24, c: 9 } },
+  { id: 'p1_4', player: 1, pos: { r: 24, c: 13 } },
+  { id: 'p2_1', player: 2, pos: { r: 0, c: 1 } },
+  { id: 'p2_2', player: 2, pos: { r: 0, c: 5 } },
+  { id: 'p2_3', player: 2, pos: { r: 0, c: 9 } },
+  { id: 'p2_4', player: 2, pos: { r: 0, c: 13 } },
 ];
 
 export function createInitialDots(
@@ -33,7 +36,7 @@ export function createInitialDots(
     return {
       id: def.id,
       player: def.player,
-      characterId: loadout[slot],
+      characterId: loadout[slot] ?? 'reaper',
       currentPos: { ...def.pos },
       history: [],
       isAlive: true,

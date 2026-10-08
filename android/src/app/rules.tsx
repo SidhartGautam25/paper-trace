@@ -60,8 +60,9 @@ export default function RulesScreen() {
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>2. Movement & Tokens</Text>
           <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
             • On your turn, select one of your alive nodes.{"\n"}
-            • Choose a <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>Distance Token (1 to 5)</Text>. This defines how many hexes your node will travel.{"\n"}
-            • Swipe in any of the <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>6 hex directions</Text> to fill that many hexes in a straight line and move your node.
+            • Choose a <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>Distance Token (1 to 6)</Text>. Each starts with four uses and sets how many hexes your node travels.{"\n"}
+            • Swipe in any of the <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>6 hex directions</Text> to fill that many hexes in a straight line and move your node.{"\n"}
+            • When every card is spent, distances <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>1, 2, and 3</Text> stay free until someone wins.
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.accent }]}>3. Elimination Mechanics</Text>

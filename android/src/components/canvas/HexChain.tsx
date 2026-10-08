@@ -5,7 +5,8 @@ import { cellToPixel, hexPolygonPath } from '../../engine/geometry';
 
 export interface HexChainCell {
   point: Point;
-  opacity?: number;
+  /** Lighter fill for the end of a trail. Black rim and white ring stay the same. */
+  fill?: string;
 }
 
 interface HexChainProps {
@@ -17,8 +18,9 @@ interface HexChainProps {
   /**
    * trail: every hex has a thin black rim and a white ring on all six sides.
    * hint: pale dashed hexes, kept visually separate from a real line.
+   * threat: a possible move that cuts or lands on an opponent.
    */
-  variant?: 'trail' | 'hint';
+  variant?: 'trail' | 'hint' | 'threat';
 }
 
 export const HexChain: React.FC<HexChainProps> = ({
@@ -31,22 +33,35 @@ export const HexChain: React.FC<HexChainProps> = ({
 }) => {
   if (cells.length === 0) return null;
 
-  if (variant === 'hint') {
+  if (variant === 'hint' || variant === 'threat') {
+    const threat = variant === 'threat';
     return (
       <G>
-        {cells.map((cell) => {
+        {cells.map((cell, index) => {
           const { x, y } = cellToPixel(cell.point, hexSize, offsetX, offsetY);
+          const isLast = index === cells.length - 1;
           return (
-            <Path
-              key={`hint_${cell.point.r}_${cell.point.c}`}
-              d={hexPolygonPath(x, y, hexSize * 0.72)}
-              fill={color}
-              fillOpacity={0.22}
-              stroke={color}
-              strokeOpacity={0.95}
-              strokeWidth={Math.max(1.6, hexSize * 0.09)}
-              strokeDasharray={`${Math.max(3, hexSize * 0.22)} ${Math.max(2, hexSize * 0.14)}`}
-            />
+            <G key={`hint_${cell.point.r}_${cell.point.c}`}>
+              <Path
+                d={hexPolygonPath(x, y, hexSize * 0.72)}
+                fill={threat ? '#F59E0B' : color}
+                fillOpacity={threat ? 0.55 : 0.22}
+                stroke={threat ? '#B45309' : color}
+                strokeOpacity={0.98}
+                strokeWidth={threat ? Math.max(2.2, hexSize * 0.12) : Math.max(1.6, hexSize * 0.09)}
+                strokeDasharray={
+                  threat
+                    ? undefined
+                    : `${Math.max(3, hexSize * 0.22)} ${Math.max(2, hexSize * 0.14)}`
+                }
+              />
+              {threat && isLast ? (
+                <Path
+                  d={hexPolygonPath(x, y, hexSize * 0.28)}
+                  fill="#7C2D12"
+                />
+              ) : null}
+            </G>
           );
         })}
       </G>
@@ -66,7 +81,7 @@ export const HexChain: React.FC<HexChainProps> = ({
           <G key={`body_${cell.point.r}_${cell.point.c}`}>
             <Path d={hexPolygonPath(x, y, blackRadius)} fill="#1A1A1A" />
             <Path d={hexPolygonPath(x, y, whiteRadius)} fill="#FFFFFF" />
-            <Path d={hexPolygonPath(x, y, fillRadius)} fill={color} />
+            <Path d={hexPolygonPath(x, y, fillRadius)} fill={cell.fill ?? color} />
           </G>
         );
       })}

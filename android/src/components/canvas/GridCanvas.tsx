@@ -6,7 +6,6 @@ import { Dot, Direction, CharacterId, CurrencyRegion, BoardFeatureInstance } fro
 import { GRID_CONFIG } from '../../constants/board';
 import { HexChain } from './HexChain';
 import { BaseDotMarker } from './BaseDotMarker';
-import { BoardRegionLayer } from './BoardRegionLayer';
 import { TrapPointMarkers } from './TrapPointMarkers';
 import {
   HEX_DIRECTIONS,
@@ -15,11 +14,12 @@ import {
   getDestination,
   hexPolygonPath,
   isWithinBounds,
+  pointsEqual,
   walkHex,
 } from '../../engine/geometry';
-import { canLandAt } from '../../engine/boardFeatureEngine';
+import { canEliminateDot, canLandAt } from '../../engine/boardFeatureEngine';
 import { getCharacterForDot, DotShape } from '../../constants/characters';
-import { getAllTrapPoints, getVisibleTrailSegments, pathCrossesOwnTrail } from '../../engine/characterEngine';
+import { doesTrailCutKillDot, getAllTrapPoints, getVisibleTrailSegments, pathCrossesOwnTrail } from '../../engine/characterEngine';
 
 interface GridCanvasProps {
   dots: Dot[];
@@ -62,7 +62,6 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   p2DotColor,
   p2LineColor,
   characterLoadout,
-  currencyRegions,
   boardFeatures,
   maxHeight,
   maxWidth,
@@ -73,7 +72,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const maxBoardHeight = Math.max(120, maxHeight - 8);
   const maxBoardWidth = Math.max(120, maxWidth - 8);
 
-  const pad = 6;
+  const pad = 2;
   const widthUnits = Math.sqrt(3) * (GRID_CONFIG.COLS + 0.5);
   const heightUnits = 1.5 * (GRID_CONFIG.ROWS - 1) + 2;
   const cellSize = Math.max(
@@ -239,18 +238,40 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   }
 
   const trailCellsFor = (dot: Dot) => {
-    const visibleTrail = getVisibleTrailSegments(dot);
-    const byCell = new Map<string, { point: { r: number; c: number } }>();
-    visibleTrail.forEach((segment) => {
+    const byCell = new Map<string, { point: { r: number; c: number }; fill?: string }>();
+    const body = trailColor(dot.player);
+    const head = headColor(dot.player);
+    getVisibleTrailSegments(dot).forEach((segment) => {
       const cells = [segment.start, ...getCellsAlongPath(segment.start, segment.end)];
       for (const point of cells) {
-        byCell.set(`${point.r},${point.c}`, { point });
+        byCell.set(`${point.r},${point.c}`, { point, fill: body });
       }
     });
+    byCell.set(`${dot.currentPos.r},${dot.currentPos.c}`, { point: dot.currentPos, fill: head });
     return Array.from(byCell.values());
   };
 
   const trailColor = (player: 1 | 2) => (player === 1 ? '#3B8BFF' : '#FF4D6A');
+  const headColor = (player: 1 | 2) => (player === 1 ? '#C5DCFF' : '#FFC1CC');
+
+  const moveKillsOpponent = (movingDot: Dot, path: { r: number; c: number }[]) => {
+    if (path.length === 0) return false;
+    const end = path[path.length - 1];
+    const landsOnEnemy = dots.some(
+      (other) =>
+        other.isAlive &&
+        other.player !== movingDot.player &&
+        pointsEqual(other.currentPos, end) &&
+        canEliminateDot(other, boardFeatures)
+    );
+    if (landsOnEnemy) return true;
+    return dots.some(
+      (other) =>
+        other.isAlive &&
+        other.player !== movingDot.player &&
+        doesTrailCutKillDot(other, movingDot.currentPos, end, boardFeatures)
+    );
+  };
 
   const renderMoveGuides = () => {
     if (!selectedDotId || selectedToken === null) return null;
@@ -268,6 +289,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
           if (!endPos || !path.every(isWithinBounds)) return null;
           if (!canLandAt(endPos, selectedDotId, dots, boardFeatures)) return null;
           if (pathCrossesOwnTrail(selectedDotId, path, dots)) return null;
+          const kills = moveKillsOpponent(movingDot, path);
 
           return (
             <HexChain
@@ -277,7 +299,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               hexSize={cellSize}
               offsetX={offsetX}
               offsetY={offsetY}
-              variant="hint"
+              variant={kills ? 'threat' : 'hint'}
             />
           );
         })}
@@ -296,6 +318,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const inBounds = path.every(isWithinBounds);
     const touchesOwn = pathCrossesOwnTrail(selectedDotId, path, dots);
     const canLand = inBounds && !touchesOwn && canLandAt(endPos, selectedDotId, dots, boardFeatures);
+    const kills = canLand && moveKillsOpponent(movingDot, path);
 
     return (
       <HexChain
@@ -304,7 +327,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         hexSize={cellSize}
         offsetX={offsetX}
         offsetY={offsetY}
-        variant="hint"
+        variant={kills ? 'threat' : 'hint'}
       />
     );
   };
@@ -324,25 +347,11 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
       onMouseUp={onMouseUpLocal}
     >
       <Svg width={boardWidth} height={boardHeight}>
-        <Rect width={boardWidth} height={boardHeight} fill="#F4F7FB" rx={18} />
-        <Rect
-          width={boardWidth}
-          height={boardHeight}
-          fill="none"
-          stroke="#D5DEE8"
-          strokeWidth={2}
-          rx={18}
-        />
+        <Rect width={boardWidth} height={boardHeight} fill="#F4F7FB" />
 
         {hexCells}
 
-        <BoardRegionLayer
-          currencyRegions={currencyRegions}
-          boardFeatures={boardFeatures}
-          cellSize={cellSize}
-          offsetX={offsetX}
-          offsetY={offsetY}
-        />
+        {/* Treasure, locks, and other board offerings stay in game state and are not drawn for now. */}
 
         <TrapPointMarkers
           trapPoints={trapPoints}
@@ -355,7 +364,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         {renderPreview()}
 
         {dots.map((dot) => {
-          if (!dot) return null;
+          if (!dot || !dot.isAlive) return null;
           const cells = trailCellsFor(dot);
           if (cells.length === 0) return null;
           return (
@@ -373,15 +382,14 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 
         {/* Active Player Node Markers */}
         {dots.map((dot) => {
-          if (!dot) return null;
+          if (!dot || dot.isAlive) return null;
           const color = getDotColor(dot.id);
-          const isSelected = selectedDotId === dot.id;
           return (
             <BaseDotMarker
               key={dot.id}
               dot={dot}
               color={color}
-              isSelected={isSelected}
+              isSelected={false}
               cellSize={cellSize}
               offsetX={offsetX}
               offsetY={offsetY}
@@ -428,13 +436,14 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
-    borderRadius: 16,
+    borderWidth: 5,
+    borderColor: '#C5D0DC',
+    borderRadius: 12,
+    backgroundColor: '#F4F7FB',
     overflow: 'hidden',
-    elevation: 8,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    marginVertical: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 0,
     // @ts-ignore
     touchAction: 'none',
   },

@@ -17,11 +17,10 @@ import { GAME_THEMES, GameTheme } from '../constants/theme';
 import { GridCanvas } from '../components/canvas/GridCanvas';
 import { TokenPicker } from '../components/ui/TokenPicker';
 import { Direction } from '../types/game';
-import { PlayerStatusBar } from '../components/ui/PlayerStatusBar';
 import { parseCharacterLoadout } from '../constants/characters';
-import { TreasuryBar } from '../components/ui/TreasuryBar';
 import { CollectionPopup } from '../components/ui/CollectionPopup';
 import { formatWalletSummary } from '../utils/wallet';
+import { GRID_CONFIG } from '../constants/board';
 
 export default function GameScreen() {
   const router = useRouter();
@@ -78,8 +77,6 @@ export default function GameScreen() {
     selectedDotId,
     selectedToken,
     selectedDirection,
-    isAiThinking,
-    isBotBlocked,
     activeNotification,
     dismissNotification,
     selectDot,
@@ -136,7 +133,11 @@ export default function GameScreen() {
   return (
     <View style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
       {/* Top Status Bar Spacer */}
-      <View style={{ height: insets.top, backgroundColor: themeColors.cardBackground }} />
+      <View style={{ height: Math.max(insets.top, 8), backgroundColor: themeColors.background, justifyContent: 'flex-end' }}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
+          <Text style={[styles.backText, { color: themeColors.textSecondary }]}>←</Text>
+        </TouchableOpacity>
+      </View>
       <StatusBar
         barStyle={activeTheme.dark ? 'light-content' : 'dark-content'}
         backgroundColor={themeColors.cardBackground}
@@ -145,23 +146,13 @@ export default function GameScreen() {
       <View style={styles.flexContainer}>
         {/* Header HUD Section */}
         <View style={styles.hudSection}>
-          <PlayerStatusBar
-            activePlayer={activePlayer}
-            winner={winner}
-            difficulty={difficulty}
-            isAiThinking={isAiThinking}
-            onReset={resetGame}
-            onBack={handleBack}
-            themeColors={{
-              ...themeColors,
-              p1Shades: [p1DotColor, p1LineColor, themeColors.p1Shades[1] || p1DotColor],
-              p2Shades: [p2DotColor, p2LineColor, themeColors.p2Shades[1] || p2DotColor],
-            }}
-            player1Tokens={player1Tokens}
-            player2Tokens={player2Tokens}
-            matchEarnings={matchEarnings}
+          <TokenPicker
+            tokens={player2Tokens}
+            selectedToken={null}
+            onSelectToken={() => {}}
+            themeColors={themeColors}
+            interactive={false}
           />
-          <TreasuryBar matchEarnings={matchEarnings} themeColors={themeColors} />
         </View>
 
         {/* Board Canvas Section with dynamic measurement */}
@@ -205,48 +196,18 @@ export default function GameScreen() {
         </View>
 
         {/* Bottom Panel Section */}
-        <View style={styles.bottomSection}>
-          <View style={[styles.bottomContainer, { marginBottom: isThreeButtonNav ? 0 : Math.max(insets.bottom, 12) }]}>
-            {activePlayer === 1 && !winner && (
-              <View
-                style={[
-                  styles.controlCard,
-                  {
-                    backgroundColor: themeColors.cardBackground,
-                    borderColor: themeColors.border,
-                  },
-                ]}
-              >
-                <TokenPicker
-                  tokens={player1Tokens}
-                  selectedToken={selectedToken}
-                  onSelectToken={selectToken}
-                  themeColors={{
-                    ...themeColors,
-                    player1Ink: p1DotColor,
-                    player1InkLight: p1DotColor + '33',
-                  }}
-                  disabled={selectedDotId === null}
-                />
-              </View>
-            )}
-
-            {activePlayer === 2 && !winner && (
-              <View
-                style={[
-                  styles.thinkingCard,
-                  {
-                    backgroundColor: themeColors.cardBackground,
-                    borderColor: themeColors.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.thinkingText, { color: themeColors.textSecondary }]}>
-                  🤖 Ink Slasher Bot is analyzing moves...
-                </Text>
-              </View>
-            )}
-          </View>
+        <View style={[styles.bottomSection, { marginBottom: isThreeButtonNav ? 4 : Math.max(insets.bottom, 8) }]}>
+          <TokenPicker
+            tokens={player1Tokens}
+            selectedToken={selectedToken}
+            onSelectToken={selectToken}
+            themeColors={{
+              ...themeColors,
+              player1Ink: p1DotColor,
+              player1InkLight: p1DotColor + '33',
+            }}
+            disabled={activePlayer !== 1 || !!winner || selectedDotId === null}
+          />
         </View>
       </View>
 
@@ -289,7 +250,7 @@ export default function GameScreen() {
               <View style={styles.scoreRow}>
                 <Text style={[styles.scoreLabel, { color: themeColors.p1Shades[0] }]}>You:</Text>
                 <Text style={[styles.scoreValue, { color: themeColors.textPrimary }]}>
-                  {dots.filter((d) => d.player === 1 && d.isAlive).reduce((sum, d) => sum + (14 - d.currentPos.r), 0)} pts
+                  {dots.filter((d) => d.player === 1 && d.isAlive).reduce((sum, d) => sum + (GRID_CONFIG.ROWS - 1 - d.currentPos.r), 0)} pts
                 </Text>
               </View>
               <View style={styles.scoreRow}>
@@ -341,7 +302,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
     position: 'relative',
   },
   bottomSection: {
@@ -365,11 +326,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  bottomContainer: {
-    width: '92%',
-    height: Dimensions.get('window').height < 750 ? 80 : 90,
-    justifyContent: 'center',
+  backButton: {
+    position: 'absolute',
+    left: 10,
+    bottom: 0,
+    width: 32,
+    height: 28,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backText: {
+    fontSize: 20,
+    fontWeight: '700',
   },
   controlCard: {
     width: '100%',

@@ -153,7 +153,7 @@ function scoreMove(move: AIMove, gameState: GameState, difficulty: 'medium' | 'h
   }
 
   // Prevent burning high value tokens (5s) unless strategically justified
-  if (move.tokenValue === 5) {
+  if (move.tokenValue >= 5) {
     score -= 10;
   }
 

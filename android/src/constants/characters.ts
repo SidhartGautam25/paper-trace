@@ -128,8 +128,9 @@ export function getCharacterForDot(
   dotId: string,
   loadout: [CharacterId, CharacterId, CharacterId]
 ): CharacterDefinition {
-  const slot = Math.max(0, Math.min(2, parseInt(dotId.split('_')[1] || '1', 10) - 1));
-  return getCharacter(loadout[slot]);
+  const slot = parseInt(dotId.split('_')[1] || '1', 10) - 1;
+  if (slot >= loadout.length) return getCharacter('reaper');
+  return getCharacter(loadout[Math.max(0, slot)]);
 }
 
 export function parseCharacterLoadout(raw?: string): [CharacterId, CharacterId, CharacterId] {
