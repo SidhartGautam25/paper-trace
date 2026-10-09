@@ -1,9 +1,10 @@
 import { GameState, Dot, TokenPool, Direction, Point } from '../types/game';
 import { getCellsAlongPath, getDestination, isWithinBounds, HEX_DIRECTIONS, pointsEqual } from './geometry';
-import { pathCrossesOwnTrail } from './characterEngine';
+import { pathCrossesOwnTrail, getMoveCoverageCells } from './characterEngine';
 import { getEffectiveTokenPool } from '../utils/tokenPool';
 import { executeShot } from './paperEngine';
 import { getRequiredDotIdForPlayer, canLandAt } from './boardFeatureEngine';
+import { getObstaclesFromState, pathCrossesImpassable } from './boardObstacleEngine';
 
 export interface AIMove {
   dotId: string;
@@ -42,11 +43,12 @@ export function getLegalMoves(gameState: GameState): AIMove[] {
       for (const dir of directions) {
         const dest = getDestination(dot.currentPos, dir, token);
         const path = getCellsAlongPath(dot.currentPos, dest);
+        const coverage = getMoveCoverageCells(path);
         if (
           isWithinBounds(dest) &&
-          path.every(isWithinBounds) &&
-          !(gameState.blackBoxes && path.some((cell) => gameState.blackBoxes!.some((b) => pointsEqual(b, cell)))) &&
-          canLandAt(dest, dot.id, gameState.dots, gameState.boardFeatures, gameState.blackBoxes) &&
+          coverage.every(isWithinBounds) &&
+          !pathCrossesImpassable(coverage, getObstaclesFromState(gameState)) &&
+          canLandAt(dest, dot.id, gameState.dots, gameState.boardFeatures, getObstaclesFromState(gameState)) &&
           !pathCrossesOwnTrail(dot.id, path, gameState.dots)
         ) {
           legalMoves.push({
@@ -105,6 +107,9 @@ function scoreMove(move: AIMove, gameState: GameState, difficulty: 'medium' | 'h
     matchEarnings: result.matchEarnings,
     boardFeatures: gameState.boardFeatures,
     forcedMoveByPlayer: result.forcedMoveByPlayer,
+    blackBoxes: gameState.blackBoxes,
+    proximityTraps: gameState.proximityTraps,
+    zoneTraps: gameState.zoneTraps,
   };
 
   const opponentLegalMoves = getLegalMoves(opponentResultState);
@@ -120,6 +125,9 @@ function scoreMove(move: AIMove, gameState: GameState, difficulty: 'medium' | 'h
 
       if (killedOurDots.length > 0) {
         maxOpponentDamage = Math.max(maxOpponentDamage, killedOurDots.length * 900);
+        if (maxOpponentDamage >= 900) {
+          break; // Already proven fatally vulnerable to opponent counter-attack
+        }
       }
     }
   }
@@ -181,6 +189,10 @@ export function getBestMove(
 
   for (const move of legalMoves) {
     const score = scoreMove(move, gameState, difficulty);
+    if (score >= 10000) {
+      // Immediate win found — execute immediately!
+      return move;
+    }
     if (score > bestScore) {
       bestScore = score;
       bestMoves = [move];

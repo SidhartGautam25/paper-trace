@@ -72,18 +72,36 @@ export function isSegmentProtectedFromCuts(dot: Dot, segmentIndex: number): bool
   return false;
 }
 
+export function getOccupiedCells(point: Point): Point[] {
+  return [point];
+}
+
+export function getMoveCoverageCells(pathCells: Point[]): Point[] {
+  return pathCells;
+}
+
 export function doesTrailCutKillDot(
   dot: Dot,
   newStart: Point,
   newEnd: Point,
-  boardFeatures: BoardFeatureInstance[]
+  boardFeatures: BoardFeatureInstance[],
+  _moverDot?: Dot
 ): boolean {
   if (!dot.isAlive) return false;
   if (isDotProtectedAtPosition(dot.currentPos, boardFeatures)) return false;
 
-  return getVisibleTrailSegments(dot).some((segment) => {
-    return areSegmentsIntersecting(newStart, newEnd, segment.start, segment.end, false);
-  });
+  const moverSegments: { start: Point; end: Point }[] = [{ start: newStart, end: newEnd }];
+
+  const victimSegments: { start: Point; end: Point }[] = [];
+  for (const segment of getVisibleTrailSegments(dot)) {
+    victimSegments.push({ start: segment.start, end: segment.end });
+  }
+
+  return moverSegments.some((mSeg) =>
+    victimSegments.some((vSeg) =>
+      areSegmentsIntersecting(mSeg.start, mSeg.end, vSeg.start, vSeg.end, false)
+    )
+  );
 }
 
 function cellKey(point: Point): string {
@@ -109,23 +127,28 @@ export function pathCrossesOwnTrail(movingDotId: string, pathCells: Point[], dot
   if (!moving || pathCells.length === 0) return false;
 
   const startPos = moving.currentPos;
-  const startKey = cellKey(startPos);
+  const startKeys = new Set(getOccupiedCells(startPos).map(cellKey));
   const endPos = pathCells[pathCells.length - 1];
+  const movingCoverage = getMoveCoverageCells(pathCells);
 
   // 1. Gather all teammate boxes (other dots on the same team and their visible trails)
   const teammateBoxes = new Set<string>();
   for (const dot of dots) {
     if (!dot.isAlive || dot.player !== moving.player || dot.id === moving.id) continue;
-    teammateBoxes.add(cellKey(dot.currentPos));
+    for (const occ of getOccupiedCells(dot.currentPos)) {
+      teammateBoxes.add(cellKey(occ));
+    }
     for (const segment of getVisibleTrailSegments(dot)) {
       for (const cell of getSegmentCells(segment.start, segment.end)) {
-        teammateBoxes.add(cellKey(cell));
+        for (const occ of getOccupiedCells(cell)) {
+          teammateBoxes.add(cellKey(occ));
+        }
       }
     }
   }
 
   // 2. Rule: Must not touch even ONE box of teammate's line or dot
-  for (const cell of pathCells) {
+  for (const cell of movingCoverage) {
     const key = cellKey(cell);
     if (teammateBoxes.has(key)) return true;
     for (const direction of HEX_DIRECTIONS) {
@@ -136,21 +159,23 @@ export function pathCrossesOwnTrail(movingDotId: string, pathCells: Point[], dot
     }
   }
 
-  // 3. Gather mover's own visible trail boxes (excluding the current starting position)
+  // 3. Gather mover's own visible trail boxes (excluding starting positions)
   const ownTrailBoxes = new Set<string>();
   const ownSegments = getVisibleTrailSegments(moving);
   for (const segment of ownSegments) {
     for (const cell of getSegmentCells(segment.start, segment.end)) {
-      const key = cellKey(cell);
-      if (key !== startKey) {
-        ownTrailBoxes.add(key);
+      for (const occ of getOccupiedCells(cell)) {
+        const key = cellKey(occ);
+        if (!startKeys.has(key)) {
+          ownTrailBoxes.add(key);
+        }
       }
     }
   }
 
   // 4. Rule for own line:
   // a) Cannot land on or step through any box of its own line
-  for (const cell of pathCells) {
+  for (const cell of movingCoverage) {
     const key = cellKey(cell);
     if (ownTrailBoxes.has(key)) {
       return true;
@@ -158,26 +183,33 @@ export function pathCrossesOwnTrail(movingDotId: string, pathCells: Point[], dot
   }
 
   // b) Cannot cross / intersect own trail segments
+  const movingSegments = [{ start: startPos, end: endPos }];
+
   for (const segment of ownSegments) {
-    if (areSegmentsIntersecting(startPos, endPos, segment.start, segment.end, true)) {
-      return true;
+    const segsToTest = [{ start: segment.start, end: segment.end }];
+    for (const mSeg of movingSegments) {
+      for (const oSeg of segsToTest) {
+        if (areSegmentsIntersecting(mSeg.start, mSeg.end, oSeg.start, oSeg.end, true)) {
+          return true;
+        }
+      }
     }
   }
 
   // c) Across all cells of the move, can touch (be adjacent to) at most ONE box of its own line
   const touchedOwnBoxes = new Set<string>();
-  for (const cell of pathCells) {
+  for (const cell of movingCoverage) {
     for (const direction of HEX_DIRECTIONS) {
       const neighbor = stepHex(cell, direction);
       const neighborKey = cellKey(neighbor);
-      if (neighborKey !== startKey && ownTrailBoxes.has(neighborKey)) {
+      if (!startKeys.has(neighborKey) && ownTrailBoxes.has(neighborKey)) {
         touchedOwnBoxes.add(neighborKey);
       }
     }
   }
 
   if (touchedOwnBoxes.size > 1) {
-    return true; // Touches more than one box of its own line
+    return true;
   }
 
   return false;

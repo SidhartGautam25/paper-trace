@@ -8,6 +8,12 @@ export interface Point {
   c: number; // Column index (0-indexed)
 }
 
+/** Passable kill-zone hex with a shared color family. */
+export interface ZoneTrapCell {
+  point: Point;
+  color: string;
+}
+
 export interface LineSegment {
   id: string; // Unique ID for key mapping in React Native SVG
   start: Point;
@@ -63,4 +69,8 @@ export interface GameState {
   boardFeatures: BoardFeatureInstance[];
   forcedMoveByPlayer: ForcedMoveByPlayer;
   blackBoxes?: Point[];
+  /** Impassable lime snares — opponent dies if beside the same trap / trap group. */
+  proximityTraps?: Point[];
+  /** Passable colored zone hexes — landing on a color kills opponents already on that color. */
+  zoneTraps?: ZoneTrapCell[];
 }

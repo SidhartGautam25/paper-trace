@@ -18,8 +18,23 @@ import {
 } from '../../engine/geometry';
 import { canEliminateDot, canLandAt } from '../../engine/boardFeatureEngine';
 import { getCharacterForDot, DotShape } from '../../constants/characters';
-import { doesTrailCutKillDot, getTrapPointsForDot, getVisibleTrailSegments, pathCrossesOwnTrail } from '../../engine/characterEngine';
+import {
+  doesTrailCutKillDot,
+  getTrapPointsForDot,
+  getVisibleTrailSegments,
+  pathCrossesOwnTrail,
+  getOccupiedCells,
+  getMoveCoverageCells,
+} from '../../engine/characterEngine';
 import { lightenHex } from '../../utils/color';
+import {
+  EMPTY_BOARD_OBSTACLES,
+  LevelBoardObstacles,
+  PROXIMITY_TRAP_FILL,
+  PROXIMITY_TRAP_RIM,
+  pathCrossesImpassable,
+  pointKey,
+} from '../../engine/boardObstacleEngine';
 
 interface GridCanvasProps {
   dots: Dot[];
@@ -41,7 +56,7 @@ interface GridCanvasProps {
   characterLoadout: CharacterId[];
   currencyRegions: CurrencyRegion[];
   boardFeatures: BoardFeatureInstance[];
-  blackBoxes?: Point[];
+  boardObstacles?: LevelBoardObstacles;
   maxHeight: number;
   maxWidth: number;
 }
@@ -64,7 +79,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   p2LineColor,
   characterLoadout,
   boardFeatures,
-  blackBoxes = [],
+  boardObstacles = EMPTY_BOARD_OBSTACLES,
   maxHeight,
   maxWidth,
 }) => {
@@ -94,10 +109,12 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const hitRadius = Math.max(28, cellSize * 1.6);
     for (const dot of dots) {
       if (!dot.isAlive || dot.player !== activePlayer) continue;
-      const { x: cx, y: cy } = cellToPixel(dot.currentPos, cellSize, offsetX, offsetY);
-      const dx = localX - cx;
-      const dy = localY - cy;
-      if (dx * dx + dy * dy <= hitRadius * hitRadius) return dot;
+      for (const pos of getOccupiedCells(dot.currentPos)) {
+        const { x: cx, y: cy } = cellToPixel(pos, cellSize, offsetX, offsetY);
+        const dx = localX - cx;
+        const dy = localY - cy;
+        if (dx * dx + dy * dy <= hitRadius * hitRadius) return dot;
+      }
     }
     return null;
   };
@@ -221,13 +238,16 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     return getCharacterForDot(dotId, characterLoadout).shape;
   };
 
-  const blackBoxSet = new Set((blackBoxes ?? []).map((p) => `${p.r},${p.c}`));
+  const blackBoxSet = new Set(boardObstacles.blackBoxes.map((p) => pointKey(p)));
+  const proximityTrapSet = new Set(boardObstacles.proximityTraps.map((p) => pointKey(p)));
 
   const hexCells = [];
   for (let r = 0; r < GRID_CONFIG.ROWS; r++) {
     for (let c = 0; c < GRID_CONFIG.COLS; c++) {
       const { x, y } = cellToPixel({ r, c }, cellSize, offsetX, offsetY);
-      const isBlack = blackBoxSet.has(`${r},${c}`);
+      const key = `${r},${c}`;
+      const isBlack = blackBoxSet.has(key);
+      const isProximity = proximityTrapSet.has(key);
 
       // Base board grid cell (underneath)
       hexCells.push(
@@ -247,6 +267,16 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
             <Path d={hexPolygonPath(x, y, cellSize * 0.9)} fill="#000000" />
             <Path d={hexPolygonPath(x, y, cellSize * 0.76)} fill="#FFFFFF" />
             <Path d={hexPolygonPath(x, y, cellSize * 0.62)} fill="#000000" />
+          </G>
+        );
+      }
+
+      if (isProximity) {
+        hexCells.push(
+          <G key={`proximity_trap_${r}_${c}`}>
+            <Path d={hexPolygonPath(x, y, cellSize * 0.9)} fill={PROXIMITY_TRAP_RIM} />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.76)} fill="#FFFFFF" />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.62)} fill={PROXIMITY_TRAP_FILL} />
           </G>
         );
       }
@@ -321,11 +351,14 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const moveKillsOpponent = (movingDot: Dot, path: { r: number; c: number }[]) => {
     if (path.length === 0) return false;
     const end = path[path.length - 1];
+    const landingCells = getOccupiedCells(end);
     const landsOnEnemy = dots.some(
       (other) =>
         other.isAlive &&
         other.player !== movingDot.player &&
-        pointsEqual(other.currentPos, end) &&
+        landingCells.some((lCell) =>
+          getOccupiedCells(other.currentPos).some((vCell) => pointsEqual(vCell, lCell))
+        ) &&
         canEliminateDot(other, boardFeatures)
     );
     if (landsOnEnemy) return true;
@@ -333,7 +366,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
       (other) =>
         other.isAlive &&
         other.player !== movingDot.player &&
-        doesTrailCutKillDot(other, movingDot.currentPos, end, boardFeatures)
+        doesTrailCutKillDot(other, movingDot.currentPos, end, boardFeatures, movingDot)
     );
   };
 
@@ -350,17 +383,17 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
           if (dir === selectedDirection) return null;
           const path = walkHex(startPos, dir, selectedToken);
           const endPos = path[path.length - 1];
-          if (!endPos || !path.every(isWithinBounds)) return null;
-          const hitsBlackBox = path.some((cell) => blackBoxSet.has(`${cell.r},${cell.c}`));
-          if (hitsBlackBox) return null;
-          if (!canLandAt(endPos, selectedDotId, dots, boardFeatures, blackBoxes)) return null;
+          const coverage = getMoveCoverageCells(path);
+          if (!endPos || !coverage.every(isWithinBounds)) return null;
+          if (pathCrossesImpassable(coverage, boardObstacles)) return null;
+          if (!canLandAt(endPos, selectedDotId, dots, boardFeatures, boardObstacles)) return null;
           if (pathCrossesOwnTrail(selectedDotId, path, dots)) return null;
           const kills = moveKillsOpponent(movingDot, path);
 
           return (
             <HexChain
               key={`guide_${dir}`}
-              cells={path.map((point) => ({ point }))}
+              cells={coverage.map((point) => ({ point }))}
               color={trailColor(movingDot.player)}
               hexSize={cellSize}
               offsetX={offsetX}
@@ -381,15 +414,17 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const startPos = movingDot.currentPos;
     const path = walkHex(startPos, selectedDirection, selectedToken);
     const endPos = getDestination(startPos, selectedDirection, selectedToken);
-    const inBounds = path.every(isWithinBounds);
-    const hitsBlackBox = path.some((cell) => blackBoxSet.has(`${cell.r},${cell.c}`));
+    const coverage = getMoveCoverageCells(path);
+    const inBounds = coverage.every(isWithinBounds);
+    const hitsImpassable = pathCrossesImpassable(coverage, boardObstacles);
     const touchesOwn = pathCrossesOwnTrail(selectedDotId, path, dots);
-    const canLand = inBounds && !hitsBlackBox && !touchesOwn && canLandAt(endPos, selectedDotId, dots, boardFeatures, blackBoxes);
+    const canLand =
+      inBounds && !hitsImpassable && !touchesOwn && canLandAt(endPos, selectedDotId, dots, boardFeatures, boardObstacles);
     const kills = canLand && moveKillsOpponent(movingDot, path);
 
     return (
       <HexChain
-        cells={path.map((point) => ({ point }))}
+        cells={coverage.map((point) => ({ point }))}
         color={canLand ? trailColor(movingDot.player) : '#EF4444'}
         hexSize={cellSize}
         offsetX={offsetX}
@@ -447,10 +482,11 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         {dots.map((dot) => {
           if (!dot || dot.isAlive) return null;
           const color = getDotColor(dot.id);
-          return (
+          const occupied = getOccupiedCells(dot.currentPos);
+          return occupied.map((cell, idx) => (
             <BaseDotMarker
-              key={dot.id}
-              dot={dot}
+              key={`${dot.id}_${idx}`}
+              dot={{ ...dot, currentPos: cell }}
               color={color}
               isSelected={false}
               cellSize={cellSize}
@@ -461,7 +497,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               shape={getShapeForDot(dot.id)}
               boardFeatures={boardFeatures}
             />
-          );
+          ));
         })}
       </Svg>
 
@@ -471,25 +507,26 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
       >
         {dots.map((dot) => {
           if (!dot || !dot.isAlive || dot.player !== activePlayer) return null;
-          // Calculate click target center coordinates
-          const { x: cx, y: cy } = cellToPixel(dot.currentPos, cellSize, offsetX, offsetY);
-
-          return (
-            <TouchableOpacity
-              key={`tap_${dot.id}`}
-              style={{
-                position: 'absolute',
-                left: cx - 26,
-                top: cy - 26,
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                backgroundColor: 'transparent',
-              }}
-              onPress={() => onSelectDot(dot.id)}
-              activeOpacity={0.65}
-            />
-          );
+          const occupied = getOccupiedCells(dot.currentPos);
+          return occupied.map((cell, idx) => {
+            const { x: cx, y: cy } = cellToPixel(cell, cellSize, offsetX, offsetY);
+            return (
+              <TouchableOpacity
+                key={`tap_${dot.id}_${idx}`}
+                style={{
+                  position: 'absolute',
+                  left: cx - 26,
+                  top: cy - 26,
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: 'transparent',
+                }}
+                onPress={() => onSelectDot(dot.id)}
+                activeOpacity={0.65}
+              />
+            );
+          });
         })}
       </View>
     </View>

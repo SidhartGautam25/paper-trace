@@ -7,6 +7,8 @@ import {
   isTrapPointForOpponent,
   doesTrailCutKillDot,
   pathCrossesOwnTrail,
+  getOccupiedCells,
+  getMoveCoverageCells,
 } from './characterEngine';
 import {
   getDestination,
@@ -31,6 +33,12 @@ import { getFeaturesAtLanding } from '../features/boardFeatureQueries';
 import { refillTokenPoolIfEmpty, getEffectiveTokenPool } from '../utils/tokenPool';
 import { BOARD_FEATURE_REGISTRY } from '../features/boardFeatureRegistry';
 import { BoardFeatureInstance } from '../types/boardFeatures';
+import {
+  applyProximityTrapKills,
+  applyZoneTrapKills,
+  getObstaclesFromState,
+  pathCrossesImpassable,
+} from './boardObstacleEngine';
 
 function generateSegmentId(dotId: string): string {
   const timestamp = Date.now();
@@ -200,11 +208,16 @@ export function executeShot(
   }
 
   const pathCells = getCellsAlongPath(startPos, endPos);
-  if (!pathCells.every(isWithinBounds)) {
+  const moverCoverage = getMoveCoverageCells(pathCells);
+  if (!moverCoverage.every(isWithinBounds)) {
     return failResult(gameState, 'Shot exceeds grid boundaries.');
   }
-  if (gameState.blackBoxes && pathCells.some((cell) => gameState.blackBoxes!.some((b) => pointsEqual(b, cell)))) {
-    return failResult(gameState, 'Shot blocked: cannot travel through or cross black box obstacles.');
+  const obstacles = getObstaclesFromState(gameState);
+  if (pathCrossesImpassable(moverCoverage, obstacles)) {
+    return failResult(
+      gameState,
+      'Shot blocked: cannot travel through impassable obstacles (black or lime snare hexes).'
+    );
   }
   if (pathCrossesOwnTrail(movingDotId, pathCells, dots)) {
     return failResult(gameState, 'Move blocked: touches teammate line or crosses own trail.');
@@ -231,9 +244,14 @@ export function executeShot(
   const killedDots: string[] = [];
   let prunedLinesCount = 0;
 
+  const landingCells = getOccupiedCells(endPos);
   updatedDots.forEach((d) => {
     if (d.player !== activePlayer && d.isAlive) {
-      if (pointsEqual(endPos, d.currentPos) && canEliminateDot(d, gameState.boardFeatures)) {
+      const victimCells = getOccupiedCells(d.currentPos);
+      const isDirectHit = landingCells.some((lCell) =>
+        victimCells.some((vCell) => pointsEqual(lCell, vCell))
+      );
+      if (isDirectHit && canEliminateDot(d, gameState.boardFeatures)) {
         d.isAlive = false;
         d.history = [];
         killedDots.push(d.id);
@@ -243,7 +261,7 @@ export function executeShot(
 
   updatedDots.forEach((d) => {
     if (d.player !== activePlayer && d.isAlive) {
-      if (doesTrailCutKillDot(d, newSegment.start, newSegment.end, gameState.boardFeatures)) {
+      if (doesTrailCutKillDot(d, newSegment.start, newSegment.end, gameState.boardFeatures, movingDot)) {
         d.isAlive = false;
         d.history = [];
         if (!killedDots.includes(d.id)) {
@@ -312,6 +330,31 @@ export function executeShot(
     : { ...gameState.forcedMoveByPlayer };
 
   let featureMessages = featureResult.featureMessages ?? [];
+
+  const proximityResult = applyProximityTrapKills(
+    resolvedDots,
+    activePlayer,
+    obstacles.proximityTraps,
+    gameState.boardFeatures
+  );
+  resolvedDots = proximityResult.dots;
+  for (const id of proximityResult.killedIds) {
+    if (!killedDots.includes(id)) killedDots.push(id);
+  }
+  featureMessages = [...featureMessages, ...proximityResult.logMessages];
+
+  const zoneResult = applyZoneTrapKills(
+    resolvedDots,
+    activePlayer,
+    obstacles.zoneTraps,
+    moverCoverage,
+    gameState.boardFeatures
+  );
+  resolvedDots = zoneResult.dots;
+  for (const id of zoneResult.killedIds) {
+    if (!killedDots.includes(id)) killedDots.push(id);
+  }
+  featureMessages = [...featureMessages, ...zoneResult.logMessages];
 
   const {
     regions: updatedRegions,
@@ -405,7 +448,11 @@ export function hasAnyValidMoves(
   dots: Dot[],
   tokens: TokenPool,
   boardFeatures: GameState['boardFeatures'],
-  blackBoxes?: Point[]
+  obstacles?: {
+    blackBoxes?: Point[];
+    proximityTraps?: Point[];
+    zoneTraps?: import('../types/game').ZoneTrapCell[];
+  }
 ): boolean {
   const aliveDots = dots.filter((d) => d.player === player && d.isAlive);
   if (aliveDots.length === 0) return false;
@@ -423,11 +470,16 @@ export function hasAnyValidMoves(
       for (const dir of directions) {
         const dest = getDestination(dot.currentPos, dir, token);
         const path = getCellsAlongPath(dot.currentPos, dest);
+        const coverage = getMoveCoverageCells(path);
         if (
           isWithinBounds(dest) &&
-          path.every(isWithinBounds) &&
-          !(blackBoxes && path.some((cell) => blackBoxes.some((b) => pointsEqual(b, cell)))) &&
-          canLandAt(dest, dot.id, dots, boardFeatures, blackBoxes) &&
+          coverage.every(isWithinBounds) &&
+          !pathCrossesImpassable(coverage, {
+            blackBoxes: obstacles?.blackBoxes ?? [],
+            proximityTraps: obstacles?.proximityTraps ?? [],
+            zoneTraps: obstacles?.zoneTraps ?? [],
+          }) &&
+          canLandAt(dest, dot.id, dots, boardFeatures, obstacles) &&
           !pathCrossesOwnTrail(dot.id, path, dots)
         ) {
           return true;

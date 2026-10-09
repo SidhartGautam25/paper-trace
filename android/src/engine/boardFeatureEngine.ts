@@ -11,9 +11,10 @@ import {
   isSanctuaryOccupied,
   isSanctuaryPoint,
 } from '../features/boardFeatureQueries';
-import { isBulwarkDot, isSegmentProtectedFromCuts } from './characterEngine';
-import { pointsEqual } from './geometry';
+import { isBulwarkDot, isSegmentProtectedFromCuts, getOccupiedCells } from './characterEngine';
+import { pointsEqual, isWithinBounds } from './geometry';
 import { BoardFeatureInstance } from '../types/boardFeatures';
+import { getObstaclesFromState, isImpassableCell } from './boardObstacleEngine';
 
 export function canEliminateDot(dot: Dot, features: BoardFeatureInstance[]): boolean {
   if (!dot.isAlive) return false;
@@ -34,29 +35,42 @@ export function validateLandingPosition(
   const movingDot = gameState.dots.find((d) => d.id === movingDotId);
   if (!movingDot) return 'Invalid dot.';
 
-  if (gameState.blackBoxes && gameState.blackBoxes.some((b) => pointsEqual(b, endPos))) {
-    return 'That point is an impassable black box obstacle.';
-  }
-
-  const occupant = gameState.dots.find(
-    (d) => d.isAlive && d.id !== movingDotId && pointsEqual(d.currentPos, endPos)
-  );
-
-  if (occupant) {
-    if (occupant.player === movingDot.player) {
-      return 'That point is already occupied by your dot.';
+  const landingCells = getOccupiedCells(endPos);
+  for (const cell of landingCells) {
+    if (!isWithinBounds(cell)) {
+      return 'Shot exceeds grid boundaries.';
     }
-    if (!canEliminateDot(occupant, gameState.boardFeatures)) {
-      return 'Cannot land on a protected dot.';
-    }
-    return null;
-  }
 
-  if (
-    isSanctuaryPoint(endPos, gameState.boardFeatures) &&
-    isSanctuaryOccupied(endPos, gameState.dots, gameState.boardFeatures, movingDotId)
-  ) {
-    return 'Sanctuary hex is occupied — only one dot may rest there.';
+    const obstacles = getObstaclesFromState(gameState);
+    if (isImpassableCell(cell, obstacles)) {
+      if (obstacles.proximityTraps.some((b) => pointsEqual(b, cell))) {
+        return 'That point is an impassable lime snare hex.';
+      }
+      return 'That point is an impassable black box obstacle.';
+    }
+
+    const occupant = gameState.dots.find(
+      (d) =>
+        d.isAlive &&
+        d.id !== movingDotId &&
+        getOccupiedCells(d.currentPos).some((occ) => pointsEqual(occ, cell))
+    );
+
+    if (occupant) {
+      if (occupant.player === movingDot.player) {
+        return 'That point is already occupied by your dot.';
+      }
+      if (!canEliminateDot(occupant, gameState.boardFeatures)) {
+        return 'Cannot land on a protected dot.';
+      }
+    }
+
+    if (
+      isSanctuaryPoint(cell, gameState.boardFeatures) &&
+      isSanctuaryOccupied(cell, gameState.dots, gameState.boardFeatures, movingDotId)
+    ) {
+      return 'Sanctuary hex is occupied — only one dot may rest there.';
+    }
   }
 
   return null;
@@ -67,13 +81,19 @@ export function canLandAt(
   movingDotId: string,
   dots: Dot[],
   boardFeatures: BoardFeatureInstance[],
-  blackBoxes?: Point[]
+  obstacles?: {
+    blackBoxes?: Point[];
+    proximityTraps?: Point[];
+    zoneTraps?: import('./boardObstacleEngine').ZoneTrapCell[];
+  }
 ): boolean {
   return (
     validateLandingPosition(endPos, movingDotId, {
       dots,
       boardFeatures,
-      blackBoxes,
+      blackBoxes: obstacles?.blackBoxes,
+      proximityTraps: obstacles?.proximityTraps,
+      zoneTraps: obstacles?.zoneTraps,
     } as GameState) === null
   );
 }

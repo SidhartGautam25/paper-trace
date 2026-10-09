@@ -21,7 +21,13 @@ import { parseCharacterLoadout } from '../constants/characters';
 import { CollectionPopup } from '../components/ui/CollectionPopup';
 import { formatWalletSummary } from '../utils/wallet';
 import { GRID_CONFIG } from '../constants/board';
-import { getLevelById, getPlayerLoadoutForLevel, getBotLoadoutForLevel, getBlackBoxesForLevel } from '../constants/levels';
+import {
+  getLevelById,
+  getPlayerLoadoutForLevel,
+  getBotLoadoutForLevel,
+  getBoardObstaclesForLevel,
+  getBotDelayForLevel,
+} from '../constants/levels';
 
 export default function GameScreen() {
   const router = useRouter();
@@ -69,7 +75,8 @@ export default function GameScreen() {
     ? parseCharacterLoadout(params.characters)
     : getPlayerLoadoutForLevel(activeLevel);
   const botLoadout = getBotLoadoutForLevel(activeLevel);
-  const blackBoxes = getBlackBoxesForLevel(activeLevel);
+  const boardObstacles = getBoardObstaclesForLevel(activeLevel);
+  const botDelayMs = getBotDelayForLevel(activeLevel);
 
   // Layout Measurement state for percentage-wise dynamic allocation
   const [boardLayout, setBoardLayout] = useState<{ width: number; height: number } | null>(null);
@@ -95,7 +102,7 @@ export default function GameScreen() {
     selectDirection,
     executeMove,
     resetGame,
-  } = usePaperSession(difficulty, characterLoadout, botLoadout, blackBoxes);
+  } = usePaperSession(difficulty, characterLoadout, botLoadout, boardObstacles, botDelayMs);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -206,7 +213,7 @@ export default function GameScreen() {
               characterLoadout={characterLoadout}
               currencyRegions={currencyRegions}
               boardFeatures={boardFeatures}
-              blackBoxes={blackBoxes}
+              boardObstacles={boardObstacles}
               maxHeight={boardLayout.height}
               maxWidth={boardLayout.width}
             />
@@ -224,7 +231,7 @@ export default function GameScreen() {
               player1Ink: p1DotColor,
               player1InkLight: p1DotColor + '33',
             }}
-            disabled={activePlayer !== 1 || !!winner || selectedDotId === null}
+            disabled={activePlayer !== 1 || !!winner}
           />
         </View>
       </View>

@@ -103,6 +103,7 @@ const LEGACY_ID_MAP: Record<string, CharacterId> = {
   phantom: 'nova',
   blitz: 'bulwark',
   fortress: 'reaper',
+  fatty: 'classic',
 };
 
 function normalizeCharacterId(raw: string): CharacterId | null {
