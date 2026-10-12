@@ -1,5 +1,5 @@
 import React from 'react';
-import { G, Path } from 'react-native-svg';
+import { G, Path, Circle } from 'react-native-svg';
 import { Point } from '../../types/game';
 import { cellToPixel, hexPolygonPath } from '../../engine/geometry';
 
@@ -9,6 +9,8 @@ export interface HexChainCell {
   fill?: string;
   /** Head hex uses a double white ring; body uses a single solid ring. */
   isHead?: boolean;
+  /** Whether this head is the currently active/selected dot */
+  isActiveHead?: boolean;
 }
 
 interface HexChainProps {
@@ -37,6 +39,7 @@ export function TrailHex({
   fill,
   borderColor,
   isHead,
+  isActiveHead = false,
 }: {
   x: number;
   y: number;
@@ -44,23 +47,41 @@ export function TrailHex({
   fill: string;
   borderColor: string;
   isHead: boolean;
+  isActiveHead?: boolean;
 }) {
   const rimRadius = hexSize * (isHead ? 0.92 : 0.9);
   const fillRadius = hexSize * (isHead ? 0.52 : 0.62);
 
   return (
     <G>
+      {isHead && isActiveHead && (
+        <G>
+          {/* Radiant golden halo border indicating active/chosen dot */}
+          <Path d={hexPolygonPath(x, y, hexSize * 1.18)} fill="#FFB300" />
+          <Path d={hexPolygonPath(x, y, hexSize * 1.05)} fill="#FFF9C4" />
+        </G>
+      )}
       <Path d={hexPolygonPath(x, y, rimRadius)} fill={borderColor} />
       {isHead ? (
         <G>
           <Path d={hexPolygonPath(x, y, hexSize * 0.84)} fill="#FFFFFF" />
-          <Path d={hexPolygonPath(x, y, hexSize * 0.72)} fill={borderColor} />
+          <Path
+            d={hexPolygonPath(x, y, hexSize * 0.72)}
+            fill={isActiveHead ? '#FFB300' : borderColor}
+          />
           <Path d={hexPolygonPath(x, y, hexSize * 0.64)} fill="#FFFFFF" />
         </G>
       ) : (
         <Path d={hexPolygonPath(x, y, hexSize * 0.76)} fill="#FFFFFF" />
       )}
       <Path d={hexPolygonPath(x, y, fillRadius)} fill={fill} />
+      {isHead && isActiveHead && (
+        <G>
+          {/* Active target pip in center of head */}
+          <Circle cx={x} cy={y} r={Math.max(3.5, hexSize * 0.22)} fill="#FFFFFF" />
+          <Circle cx={x} cy={y} r={Math.max(2, hexSize * 0.12)} fill="#E65100" />
+        </G>
+      )}
     </G>
   );
 }
@@ -137,6 +158,7 @@ export const HexChain: React.FC<HexChainProps> = ({
               fill={fill}
               borderColor={borderColor}
               isHead={cell.isHead === true}
+              isActiveHead={cell.isActiveHead === true}
             />
           </G>
         );

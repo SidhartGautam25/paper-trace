@@ -394,6 +394,12 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     }
   }
 
+  const effectiveSelectedDotId =
+    selectedDotId ??
+    (activePlayer === 1
+      ? (dots.find((d) => d.player === 1 && d.isAlive)?.id ?? null)
+      : null);
+
   const orderedTrailPoints = (dot: Dot) => {
     const ordered: { r: number; c: number }[] = [];
     const seen = new Set<string>();
@@ -409,7 +415,9 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         push(point);
       }
     }
-    push(dot.currentPos);
+    for (const occ of getOccupiedCells(dot.currentPos)) {
+      push(occ);
+    }
     return ordered;
   };
 
@@ -424,13 +432,16 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const headFill = trailHeadFillForDot(dot);
     const bodyFill = trailColor(dot.player);
     const points = orderedTrailPoints(dot);
-    const last = points.length - 1;
-    return points.map((point, index) => {
-      const isHead = index === last;
+    const headKeys = new Set(getOccupiedCells(dot.currentPos).map((p) => `${p.r},${p.c}`));
+    const isActive = dot.id === effectiveSelectedDotId && dot.player === activePlayer;
+
+    return points.map((point) => {
+      const isHead = headKeys.has(`${point.r},${point.c}`);
       return {
         point,
         fill: isHead ? headFill : bodyFill,
         isHead,
+        isActiveHead: isHead && isActive,
       };
     });
   };
@@ -572,23 +583,29 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 
         {/* Treasure, locks, and other board offerings stay in game state and are not drawn for now. */}
 
-        {dots.map((dot) => {
-          if (!dot || !dot.isAlive) return null;
-          const cells = trailCellsFor(dot);
-          if (cells.length === 0) return null;
-          return (
-            <HexChain
-              key={`trail_${dot.id}`}
-              cells={cells}
-              color={trailColor(dot.player)}
-              hexSize={cellSize}
-              offsetX={offsetX}
-              offsetY={offsetY}
-              variant="trail"
-              borderColor="#000000"
-            />
-          );
-        })}
+        {[...dots]
+          .sort((a, b) => {
+            if (a.id === effectiveSelectedDotId) return 1;
+            if (b.id === effectiveSelectedDotId) return -1;
+            return 0;
+          })
+          .map((dot) => {
+            if (!dot || !dot.isAlive) return null;
+            const cells = trailCellsFor(dot);
+            if (cells.length === 0) return null;
+            return (
+              <HexChain
+                key={`trail_${dot.id}`}
+                cells={cells}
+                color={trailColor(dot.player)}
+                hexSize={cellSize}
+                offsetX={offsetX}
+                offsetY={offsetY}
+                variant="trail"
+                borderColor="#000000"
+              />
+            );
+          })}
 
         {renderGhostTraps()}
 

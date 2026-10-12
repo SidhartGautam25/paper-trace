@@ -76,7 +76,7 @@ export function usePaperSession(
         setSelectedDotId(forcedId);
       } else if (lastMovedStillAlive) {
         setSelectedDotId(lastMovedP1DotId);
-      } else if (aliveP1Dots.length === 1) {
+      } else if (aliveP1Dots.length > 0) {
         setSelectedDotId(aliveP1Dots[0].id);
       } else {
         setSelectedDotId(null);
