@@ -7,6 +7,7 @@ import {
   ScrollView,
   StatusBar,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Svg, { Circle, Line } from 'react-native-svg';
@@ -173,18 +174,27 @@ export default function HomeScreen() {
                             },
                           ]}
                         >
-                          <Text
-                            style={[
-                              styles.dotPillText,
-                              {
-                                color: isSelected
-                                  ? currentTheme.colors.accent
-                                  : currentTheme.colors.textPrimary,
-                              },
-                            ]}
-                          >
-                            {charDef.name}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            {charDef.avatar && (
+                              <Image
+                                source={charDef.avatar}
+                                style={{ width: 14, height: 14, marginRight: 4 }}
+                                resizeMode="contain"
+                              />
+                            )}
+                            <Text
+                              style={[
+                                styles.dotPillText,
+                                {
+                                  color: isSelected
+                                    ? currentTheme.colors.accent
+                                    : currentTheme.colors.textPrimary,
+                                },
+                              ]}
+                            >
+                              {charDef.name}
+                            </Text>
+                          </View>
                         </View>
                       );
                     })}

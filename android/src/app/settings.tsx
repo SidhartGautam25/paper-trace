@@ -9,6 +9,7 @@ import {
   StatusBar,
   Platform,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -297,7 +298,15 @@ export default function SettingsScreen() {
                     activeOpacity={0.7}
                   >
                     <View style={styles.cardHeader}>
-                      <View style={{ marginRight: 8 }}>{renderShapePreview(char.shape, char.dotColor)}</View>
+                      {char.avatar ? (
+                        <Image
+                          source={char.avatar}
+                          style={{ width: 28, height: 28, marginRight: 8 }}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View style={{ marginRight: 8 }}>{renderShapePreview(char.shape, char.dotColor)}</View>
+                      )}
                       <View
                         style={[
                           styles.radioCircle,

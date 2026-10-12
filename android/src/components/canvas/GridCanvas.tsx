@@ -435,6 +435,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   };
 
   const trailCellsFor = (dot: Dot) => {
+    const character = getCharacterForDot(dot.id, characterLoadout);
     const headFill = trailHeadFillForDot(dot);
     const bodyFill = trailColor(dot.player);
     const points = orderedTrailPoints(dot);
@@ -448,6 +449,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         fill: isHead ? headFill : bodyFill,
         isHead,
         isActiveHead: isHead && isActive,
+        avatar: isHead ? character.avatar : undefined,
       };
     });
   };

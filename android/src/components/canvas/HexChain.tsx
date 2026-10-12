@@ -1,5 +1,5 @@
 import React from 'react';
-import { G, Path, Circle } from 'react-native-svg';
+import { G, Path, Circle, Image as SvgImage } from 'react-native-svg';
 import { Point } from '../../types/game';
 import { cellToPixel, hexPolygonPath } from '../../engine/geometry';
 
@@ -11,6 +11,8 @@ export interface HexChainCell {
   isHead?: boolean;
   /** Whether this head is the currently active/selected dot */
   isActiveHead?: boolean;
+  /** Character avatar image for the head */
+  avatar?: any;
 }
 
 interface HexChainProps {
@@ -40,6 +42,7 @@ export function TrailHex({
   borderColor,
   isHead,
   isActiveHead = false,
+  avatar,
 }: {
   x: number;
   y: number;
@@ -48,9 +51,41 @@ export function TrailHex({
   borderColor: string;
   isHead: boolean;
   isActiveHead?: boolean;
+  avatar?: any;
 }) {
   const rimRadius = hexSize * (isHead ? 0.92 : 0.9);
   const fillRadius = hexSize * (isHead ? 0.52 : 0.62);
+
+  // If head has a character avatar image: render the avatar!
+  if (isHead && avatar) {
+    const imgSize = hexSize * 2.18;
+    return (
+      <G>
+        {isActiveHead && (
+          <G>
+            {/* Radiant golden halo border indicating active/chosen dot */}
+            <Path d={hexPolygonPath(x, y, hexSize * 1.22)} fill="#FFB300" />
+            <Path d={hexPolygonPath(x, y, hexSize * 1.08)} fill="#FFF9C4" />
+          </G>
+        )}
+        <SvgImage
+          href={avatar}
+          x={x - imgSize / 2}
+          y={y - imgSize / 2}
+          width={imgSize}
+          height={imgSize}
+          preserveAspectRatio="xMidYMid meet"
+        />
+        {isActiveHead && (
+          <G>
+            {/* Active focus pip in center of head */}
+            <Circle cx={x} cy={y} r={Math.max(3.5, hexSize * 0.22)} fill="#FFFFFF" fillOpacity={0.9} />
+            <Circle cx={x} cy={y} r={Math.max(2, hexSize * 0.12)} fill="#FFB300" />
+          </G>
+        )}
+      </G>
+    );
+  }
 
   return (
     <G>
@@ -159,6 +194,7 @@ export const HexChain: React.FC<HexChainProps> = ({
               borderColor={borderColor}
               isHead={cell.isHead === true}
               isActiveHead={cell.isActiveHead === true}
+              avatar={cell.avatar}
             />
           </G>
         );

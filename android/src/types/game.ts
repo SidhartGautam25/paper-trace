@@ -20,7 +20,7 @@ export interface LineSegment {
   end: Point;
 }
 
-export type CharacterId = 'classic' | 'nova' | 'bulwark' | 'reaper';
+export type CharacterId = 'classic' | 'nova' | 'bulwark' | 'reaper' | 'robot' | 'cat';
 export type CurrencyType = 'gold' | 'silver' | 'money';
 
 export interface PlayerWallet {

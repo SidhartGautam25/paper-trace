@@ -275,9 +275,9 @@ export const LEVELS: LevelConfig[] = [
     botDelayMs: 800,
     dots: {
       dot1: 'classic',
-      dot2: 'classic',
-      dot3: 'classic',
-      dot4: 'classic',
+      dot2: 'bulwark',
+      dot3: 'nova',
+      dot4: 'reaper',
     },
     pos_power: [
       {
@@ -290,14 +290,14 @@ export const LEVELS: LevelConfig[] = [
     id: 2,
     name: 'Level 2',
     title: 'Ink Skirmish',
-    description: 'Medium AI • 4 Classic Dots',
+    description: 'Medium AI • 4 Hero Dots',
     difficulty: 'medium',
     botDelayMs: 800,
     dots: {
       dot1: 'classic',
-      dot2: 'classic',
-      dot3: 'classic',
-      dot4: 'classic',
+      dot2: 'bulwark',
+      dot3: 'nova',
+      dot4: 'reaper',
     },
     pos_power: [
       {
@@ -310,14 +310,14 @@ export const LEVELS: LevelConfig[] = [
     id: 3,
     name: 'Level 3',
     title: 'Tactical Clash',
-    description: 'Hard AI (Minimax) • 4 Classic Dots',
+    description: 'Hard AI (Minimax) • 4 Hero Dots',
     difficulty: 'hard',
     botDelayMs: 150,
     dots: {
       dot1: 'classic',
-      dot2: 'classic',
-      dot3: 'classic',
-      dot4: 'classic',
+      dot2: 'bulwark',
+      dot3: 'nova',
+      dot4: 'reaper',
     },
     pos_power: [
       {
@@ -335,9 +335,9 @@ export const LEVELS: LevelConfig[] = [
     botDelayMs: 150,
     dots: {
       dot1: 'classic',
-      dot2: 'classic',
-      dot3: 'classic',
-      dot4: 'classic',
+      dot2: 'bulwark',
+      dot3: 'nova',
+      dot4: 'reaper',
     },
     pos_power: [
       {
@@ -368,9 +368,9 @@ export const LEVELS: LevelConfig[] = [
     botDelayMs: 150,
     dots: {
       dot1: 'classic',
-      dot2: 'classic',
-      dot3: 'classic',
-      dot4: 'classic',
+      dot2: 'bulwark',
+      dot3: 'nova',
+      dot4: 'reaper',
     },
     pos_power: [
       {
@@ -415,9 +415,9 @@ export const LEVELS: LevelConfig[] = [
     botDelayMs: 150,
     dots: {
       dot1: 'classic',
-      dot2: 'classic',
-      dot3: 'classic',
-      dot4: 'classic',
+      dot2: 'bulwark',
+      dot3: 'nova',
+      dot4: 'reaper',
     },
     pos_power: [
       {
