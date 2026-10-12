@@ -136,6 +136,24 @@ export function getMovementRotationDegrees(dot: { player: 1 | 2; history: { star
   return dot.player === 1 ? 0 : 180;
 }
 
+/** Rotation degrees corresponding to a hex direction when default orientation points up (-Y). */
+export function hexDirectionToRotation(direction: Direction): number {
+  switch (direction) {
+    case 'NE':
+      return 30;
+    case 'E':
+      return 90;
+    case 'SE':
+      return 150;
+    case 'SW':
+      return 210;
+    case 'W':
+      return 270;
+    case 'NW':
+      return 330;
+  }
+}
+
 export function isWithinBounds(point: Point): boolean {
   return (
     point.r >= 0 &&

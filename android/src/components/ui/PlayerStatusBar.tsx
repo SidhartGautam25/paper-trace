@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { TokenPool, PlayerWallet } from '../../types/game';
 import { formatWalletSummary } from '../../utils/wallet';
+import { isFreePlay } from '../../utils/tokenPool';
 
 interface PlayerStatusBarProps {
   activePlayer: 1 | 2;
@@ -47,24 +48,27 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
           <View style={styles.tokenBadgesContainer}>
             {[1, 2, 3, 4, 5, 6].map((val) => {
               const opponentTokens = activePlayer === 1 ? player2Tokens : player1Tokens;
+              const freePlay = isFreePlay(opponentTokens);
               const count = opponentTokens[val] || 0;
+              const unlimited = freePlay && val <= 3;
+              const isAvailable = unlimited || count > 0;
               return (
                 <View
                   key={`opp_tok_${val}`}
                   style={[
                     styles.tokenBadge,
                     {
-                      borderColor: count > 0 ? themeColors.border : themeColors.border + '44',
-                      backgroundColor: count > 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.01)',
-                      opacity: count > 0 ? 1 : 0.45,
+                      borderColor: isAvailable ? themeColors.border : themeColors.border + '44',
+                      backgroundColor: isAvailable ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.01)',
+                      opacity: isAvailable ? 1 : 0.45,
                     },
                   ]}
                 >
-                  <Text style={[styles.tokenBadgeText, { color: count > 0 ? themeColors.textPrimary : themeColors.textSecondary }]}>
+                  <Text style={[styles.tokenBadgeText, { color: isAvailable ? themeColors.textPrimary : themeColors.textSecondary }]}>
                     {val}
                   </Text>
-                  <Text style={[styles.tokenCountText, { color: count > 0 ? themeColors.accent : themeColors.textSecondary }]}>
-                    x{count}
+                  <Text style={[styles.tokenCountText, { color: isAvailable ? themeColors.accent : themeColors.textSecondary }]}>
+                    {unlimited ? '∞' : `x${count}`}
                   </Text>
                 </View>
               );

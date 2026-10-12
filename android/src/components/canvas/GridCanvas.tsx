@@ -11,6 +11,8 @@ import {
   cellToPixel,
   getCellsAlongPath,
   getDestination,
+  getMovementRotationDegrees,
+  hexDirectionToRotation,
   hexPolygonPath,
   isWithinBounds,
   pointsEqual,
@@ -18,8 +20,25 @@ import {
 } from '../../engine/geometry';
 import { canEliminateDot, canLandAt } from '../../engine/boardFeatureEngine';
 import { getCharacterForDot, DotShape } from '../../constants/characters';
-import { doesTrailCutKillDot, getTrapPointsForDot, getVisibleTrailSegments, pathCrossesOwnTrail } from '../../engine/characterEngine';
+import {
+  doesTrailCutKillDot,
+  getTrapPointsForDot,
+  getVisibleTrailSegments,
+  pathCrossesOwnTrail,
+  getOccupiedCells,
+  getMoveCoverageCells,
+} from '../../engine/characterEngine';
 import { lightenHex } from '../../utils/color';
+import {
+  EMPTY_BOARD_OBSTACLES,
+  LevelBoardObstacles,
+  PROXIMITY_TRAP_NEO_RIM,
+  PROXIMITY_TRAP_NEO_GLOW,
+  PROXIMITY_TRAP_NEO_ACCENT,
+  PROXIMITY_TRAP_NEO_INNER,
+  pathCrossesImpassable,
+  pointKey,
+} from '../../engine/boardObstacleEngine';
 
 interface GridCanvasProps {
   dots: Dot[];
@@ -41,7 +60,7 @@ interface GridCanvasProps {
   characterLoadout: CharacterId[];
   currencyRegions: CurrencyRegion[];
   boardFeatures: BoardFeatureInstance[];
-  blackBoxes?: Point[];
+  boardObstacles?: LevelBoardObstacles;
   maxHeight: number;
   maxWidth: number;
 }
@@ -64,7 +83,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   p2LineColor,
   characterLoadout,
   boardFeatures,
-  blackBoxes = [],
+  boardObstacles = EMPTY_BOARD_OBSTACLES,
   maxHeight,
   maxWidth,
 }) => {
@@ -89,15 +108,81 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const dragOriginRef = useRef<{ x: number; y: number } | null>(null);
   const gestureDirRef = useRef<Direction | null>(null);
   const gestureDotIdRef = useRef<string | null>(null);
+  const tapGuideDirRef = useRef<Direction | null>(null);
+  const isDraggingRef = useRef<boolean>(false);
 
-  const findPlayerDotAtLocal = (localX: number, localY: number): Dot | null => {
-    const hitRadius = Math.max(28, cellSize * 1.6);
+  const findTeammateDotAtLocal = (
+    localX: number,
+    localY: number,
+    currentDotId: string | null
+  ): Dot | null => {
+    let closestDot: Dot | null = null;
+    let closestDist = Infinity;
+    const hitRadius = Math.max(26, cellSize * 1.25);
+
     for (const dot of dots) {
       if (!dot.isAlive || dot.player !== activePlayer) continue;
-      const { x: cx, y: cy } = cellToPixel(dot.currentPos, cellSize, offsetX, offsetY);
-      const dx = localX - cx;
-      const dy = localY - cy;
-      if (dx * dx + dy * dy <= hitRadius * hitRadius) return dot;
+      if (currentDotId && dot.id === currentDotId) continue;
+      for (const pos of getOccupiedCells(dot.currentPos)) {
+        const { x: cx, y: cy } = cellToPixel(pos, cellSize, offsetX, offsetY);
+        const d = Math.hypot(localX - cx, localY - cy);
+        if (d < closestDist) {
+          closestDist = d;
+          closestDot = dot;
+        }
+      }
+    }
+
+    if (closestDot && closestDist <= hitRadius) {
+      return closestDot;
+    }
+    return null;
+  };
+
+  const findMoveDirectionAtPixel = (
+    px: number,
+    py: number,
+    dotId: string
+  ): Direction | null => {
+    if (selectedToken === null) return null;
+    const movingDot = dots.find((d) => d.id === dotId);
+    if (!movingDot || !movingDot.isAlive || movingDot.player !== activePlayer) return null;
+
+    const startPos = movingDot.currentPos;
+    const occupied = getOccupiedCells(startPos);
+
+    let distToDot = Infinity;
+    for (const cell of occupied) {
+      const { x: cx, y: cy } = cellToPixel(cell, cellSize, offsetX, offsetY);
+      const d = Math.hypot(px - cx, py - cy);
+      if (d < distToDot) distToDot = d;
+    }
+
+    let bestDir: Direction | null = null;
+    let bestDist = Infinity;
+    const maxHitRadius = Math.max(24, cellSize * 1.15);
+
+    for (const dir of HEX_DIRECTIONS) {
+      const path = walkHex(startPos, dir, selectedToken);
+      const endPos = path[path.length - 1];
+      const coverage = getMoveCoverageCells(path);
+      if (!endPos || !coverage.every(isWithinBounds)) continue;
+      if (pathCrossesImpassable(coverage, boardObstacles)) continue;
+      if (!canLandAt(endPos, dotId, dots, boardFeatures, boardObstacles)) continue;
+      if (pathCrossesOwnTrail(dotId, path, dots)) continue;
+
+      for (const cell of coverage) {
+        const { x: cx, y: cy } = cellToPixel(cell, cellSize, offsetX, offsetY);
+        const dist = Math.hypot(px - cx, py - cy);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestDir = dir;
+        }
+      }
+    }
+
+    if (bestDir && bestDist <= maxHitRadius && bestDist < distToDot) {
+      return bestDir;
     }
     return null;
   };
@@ -143,38 +228,84 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const handleStart = (localX: number, localY: number) => {
     if (selectedToken === null) return;
 
-    let dotId = selectedDotId;
-    const hitDot = findPlayerDotAtLocal(localX, localY);
-    if (hitDot) {
-      dotId = hitDot.id;
-      onSelectDot(hitDot.id);
-    }
-    if (!dotId) return;
-
-    gestureDotIdRef.current = dotId;
-    gestureDirRef.current = null;
     dragOriginRef.current = { x: localX, y: localY };
+    gestureDirRef.current = null;
+    tapGuideDirRef.current = null;
+    isDraggingRef.current = false;
+
+    // 1. Check if user clicked a different teammate dot to switch selection
+    const teammateDot = findTeammateDotAtLocal(localX, localY, selectedDotId);
+    if (teammateDot) {
+      gestureDotIdRef.current = teammateDot.id;
+      onSelectDot(teammateDot.id);
+      return;
+    }
+
+    const effectiveDotId =
+      selectedDotId ?? dots.find((d) => d.player === activePlayer && d.isAlive)?.id ?? null;
+    if (!effectiveDotId) return;
+
+    gestureDotIdRef.current = effectiveDotId;
+
+    // 2. Check if user clicked on one of the possible move guide hex boxes
+    const guideDir = findMoveDirectionAtPixel(localX, localY, effectiveDotId);
+    if (guideDir) {
+      tapGuideDirRef.current = guideDir;
+      onSelectDirection(guideDir);
+      onGestureStart?.();
+      return;
+    }
+
     onGestureStart?.();
   };
 
   const handleMove = (localX: number, localY: number) => {
     const origin = dragOriginRef.current;
     if (!gestureDotIdRef.current || selectedToken === null || !origin) return;
-    const dir = getGestureDirection(localX - origin.x, localY - origin.y, gestureDirRef.current);
-    if (dir && dir !== gestureDirRef.current) {
-      gestureDirRef.current = dir;
-      onSelectDirection(dir);
+
+    const dx = localX - origin.x;
+    const dy = localY - origin.y;
+    const dist = Math.hypot(dx, dy);
+
+    // Require movement above drag threshold (12px) to distinguish drag from tap
+    if (dist >= 12) {
+      isDraggingRef.current = true;
+      tapGuideDirRef.current = null;
+
+      const dir = getGestureDirection(dx, dy, gestureDirRef.current);
+      if (dir && dir !== gestureDirRef.current) {
+        gestureDirRef.current = dir;
+        onSelectDirection(dir);
+      }
     }
   };
 
-  const handleEnd = () => {
-    const dir = gestureDirRef.current;
-    const dotId = gestureDotIdRef.current;
+  const handleEnd = (upX?: number, upY?: number) => {
+    const isDrag = isDraggingRef.current;
+    const dotId = gestureDotIdRef.current ?? selectedDotId;
+    const dragDir = gestureDirRef.current;
+    let tapDir = tapGuideDirRef.current;
+
+    // If not a drag and tapDir wasn't locked on touch down, hit test release position
+    if (!isDrag && !tapDir && upX !== undefined && upY !== undefined && dotId) {
+      tapDir = findMoveDirectionAtPixel(upX, upY, dotId);
+    }
+
     dragOriginRef.current = null;
     gestureDirRef.current = null;
     gestureDotIdRef.current = null;
-    if (dir && dotId) {
-      onGestureEnd(dir, dotId);
+    tapGuideDirRef.current = null;
+    isDraggingRef.current = false;
+
+    if (isDrag) {
+      if (dragDir && dotId) {
+        onGestureEnd(dragDir, dotId);
+      }
+    } else {
+      if (tapDir && dotId) {
+        onSelectDirection(tapDir);
+        onGestureEnd(tapDir, dotId);
+      }
     }
   };
 
@@ -195,8 +326,9 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     }
   };
 
-  const onTouchEndLocal = () => {
-    handleEnd();
+  const onTouchEndLocal = (e: any) => {
+    const touch = e.nativeEvent.changedTouches?.[0];
+    handleEnd(touch?.locationX, touch?.locationY);
   };
 
   const onMouseDownLocal = (e: any) => {
@@ -208,8 +340,8 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     handleMove(e.nativeEvent.locationX, e.nativeEvent.locationY);
   };
 
-  const onMouseUpLocal = () => {
-    handleEnd();
+  const onMouseUpLocal = (e: any) => {
+    handleEnd(e.nativeEvent.locationX, e.nativeEvent.locationY);
   };
 
   // Retrieve color from character definition (per dot slot)
@@ -221,13 +353,16 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     return getCharacterForDot(dotId, characterLoadout).shape;
   };
 
-  const blackBoxSet = new Set((blackBoxes ?? []).map((p) => `${p.r},${p.c}`));
+  const blackBoxSet = new Set(boardObstacles.blackBoxes.map((p) => pointKey(p)));
+  const proximityTrapSet = new Set(boardObstacles.proximityTraps.map((p) => pointKey(p)));
 
   const hexCells = [];
   for (let r = 0; r < GRID_CONFIG.ROWS; r++) {
     for (let c = 0; c < GRID_CONFIG.COLS; c++) {
       const { x, y } = cellToPixel({ r, c }, cellSize, offsetX, offsetY);
-      const isBlack = blackBoxSet.has(`${r},${c}`);
+      const key = `${r},${c}`;
+      const isBlack = blackBoxSet.has(key);
+      const isProximity = proximityTrapSet.has(key);
 
       // Base board grid cell (underneath)
       hexCells.push(
@@ -250,8 +385,28 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
           </G>
         );
       }
+
+      if (isProximity) {
+        hexCells.push(
+          <G key={`proximity_trap_${r}_${c}`}>
+            {/* Outer neo design border: layered electric cyber indigo & sapphire rings */}
+            <Path d={hexPolygonPath(x, y, cellSize * 0.94)} fill={PROXIMITY_TRAP_NEO_RIM} />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.88)} fill={PROXIMITY_TRAP_NEO_GLOW} />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.78)} fill={PROXIMITY_TRAP_NEO_ACCENT} />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.70)} fill={PROXIMITY_TRAP_NEO_INNER} />
+            {/* Empty inner body matching the clean board cell */}
+            <Path d={hexPolygonPath(x, y, cellSize * 0.62)} fill="#E4EBF3" />
+          </G>
+        );
+      }
     }
   }
+
+  const effectiveSelectedDotId =
+    selectedDotId ??
+    (activePlayer === 1
+      ? (dots.find((d) => d.player === 1 && d.isAlive)?.id ?? null)
+      : null);
 
   const orderedTrailPoints = (dot: Dot) => {
     const ordered: { r: number; c: number }[] = [];
@@ -268,7 +423,9 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         push(point);
       }
     }
-    push(dot.currentPos);
+    for (const occ of getOccupiedCells(dot.currentPos)) {
+      push(occ);
+    }
     return ordered;
   };
 
@@ -280,16 +437,28 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   };
 
   const trailCellsFor = (dot: Dot) => {
+    const character = getCharacterForDot(dot.id, characterLoadout);
     const headFill = trailHeadFillForDot(dot);
     const bodyFill = trailColor(dot.player);
     const points = orderedTrailPoints(dot);
-    const last = points.length - 1;
-    return points.map((point, index) => {
-      const isHead = index === last;
+    const headKeys = new Set(getOccupiedCells(dot.currentPos).map((p) => `${p.r},${p.c}`));
+    const isActive = dot.id === effectiveSelectedDotId && dot.player === activePlayer;
+    const rotation =
+      isActive && selectedDirection
+        ? hexDirectionToRotation(selectedDirection)
+        : getMovementRotationDegrees(dot);
+
+    return points.map((point) => {
+      const isHead = headKeys.has(`${point.r},${point.c}`);
       return {
         point,
         fill: isHead ? headFill : bodyFill,
         isHead,
+        isActiveHead: isHead && isActive,
+        avatar: isHead ? character.avatar : undefined,
+        avatarBody: isHead ? character.avatarBody : undefined,
+        avatarFace: isHead ? character.avatarFace : undefined,
+        rotation: isHead ? rotation : undefined,
       };
     });
   };
@@ -321,11 +490,14 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const moveKillsOpponent = (movingDot: Dot, path: { r: number; c: number }[]) => {
     if (path.length === 0) return false;
     const end = path[path.length - 1];
+    const landingCells = getOccupiedCells(end);
     const landsOnEnemy = dots.some(
       (other) =>
         other.isAlive &&
         other.player !== movingDot.player &&
-        pointsEqual(other.currentPos, end) &&
+        landingCells.some((lCell) =>
+          getOccupiedCells(other.currentPos).some((vCell) => pointsEqual(vCell, lCell))
+        ) &&
         canEliminateDot(other, boardFeatures)
     );
     if (landsOnEnemy) return true;
@@ -333,7 +505,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
       (other) =>
         other.isAlive &&
         other.player !== movingDot.player &&
-        doesTrailCutKillDot(other, movingDot.currentPos, end, boardFeatures)
+        doesTrailCutKillDot(other, movingDot.currentPos, end, boardFeatures, movingDot)
     );
   };
 
@@ -350,17 +522,17 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
           if (dir === selectedDirection) return null;
           const path = walkHex(startPos, dir, selectedToken);
           const endPos = path[path.length - 1];
-          if (!endPos || !path.every(isWithinBounds)) return null;
-          const hitsBlackBox = path.some((cell) => blackBoxSet.has(`${cell.r},${cell.c}`));
-          if (hitsBlackBox) return null;
-          if (!canLandAt(endPos, selectedDotId, dots, boardFeatures, blackBoxes)) return null;
+          const coverage = getMoveCoverageCells(path);
+          if (!endPos || !coverage.every(isWithinBounds)) return null;
+          if (pathCrossesImpassable(coverage, boardObstacles)) return null;
+          if (!canLandAt(endPos, selectedDotId, dots, boardFeatures, boardObstacles)) return null;
           if (pathCrossesOwnTrail(selectedDotId, path, dots)) return null;
           const kills = moveKillsOpponent(movingDot, path);
 
           return (
             <HexChain
               key={`guide_${dir}`}
-              cells={path.map((point) => ({ point }))}
+              cells={coverage.map((point) => ({ point }))}
               color={trailColor(movingDot.player)}
               hexSize={cellSize}
               offsetX={offsetX}
@@ -381,15 +553,17 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const startPos = movingDot.currentPos;
     const path = walkHex(startPos, selectedDirection, selectedToken);
     const endPos = getDestination(startPos, selectedDirection, selectedToken);
-    const inBounds = path.every(isWithinBounds);
-    const hitsBlackBox = path.some((cell) => blackBoxSet.has(`${cell.r},${cell.c}`));
+    const coverage = getMoveCoverageCells(path);
+    const inBounds = coverage.every(isWithinBounds);
+    const hitsImpassable = pathCrossesImpassable(coverage, boardObstacles);
     const touchesOwn = pathCrossesOwnTrail(selectedDotId, path, dots);
-    const canLand = inBounds && !hitsBlackBox && !touchesOwn && canLandAt(endPos, selectedDotId, dots, boardFeatures, blackBoxes);
+    const canLand =
+      inBounds && !hitsImpassable && !touchesOwn && canLandAt(endPos, selectedDotId, dots, boardFeatures, boardObstacles);
     const kills = canLand && moveKillsOpponent(movingDot, path);
 
     return (
       <HexChain
-        cells={path.map((point) => ({ point }))}
+        cells={coverage.map((point) => ({ point }))}
         color={canLand ? trailColor(movingDot.player) : '#EF4444'}
         hexSize={cellSize}
         offsetX={offsetX}
@@ -401,7 +575,13 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 
   return (
     <View
-      style={[styles.container, { shadowColor: themeColors.shadowColor }]}
+      style={[
+        styles.container,
+        {
+          shadowColor: themeColors.shadowColor,
+          cursor: (selectedToken !== null ? 'pointer' : 'auto') as any,
+        },
+      ]}
       onStartShouldSetResponder={() => selectedToken !== null}
       onMoveShouldSetResponder={() => selectedToken !== null}
       onTouchStart={onTouchStartLocal}
@@ -420,25 +600,31 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 
         {/* Treasure, locks, and other board offerings stay in game state and are not drawn for now. */}
 
-        {dots.map((dot) => {
-          if (!dot || !dot.isAlive) return null;
-          const cells = trailCellsFor(dot);
-          if (cells.length === 0) return null;
-          return (
-            <HexChain
-              key={`trail_${dot.id}`}
-              cells={cells}
-              color={trailColor(dot.player)}
-              hexSize={cellSize}
-              offsetX={offsetX}
-              offsetY={offsetY}
-              variant="trail"
-              borderColor="#000000"
-            />
-          );
-        })}
-
         {renderGhostTraps()}
+
+        {[...dots]
+          .sort((a, b) => {
+            if (a.id === effectiveSelectedDotId) return 1;
+            if (b.id === effectiveSelectedDotId) return -1;
+            return 0;
+          })
+          .map((dot) => {
+            if (!dot || !dot.isAlive) return null;
+            const cells = trailCellsFor(dot);
+            if (cells.length === 0) return null;
+            return (
+              <HexChain
+                key={`trail_${dot.id}`}
+                cells={cells}
+                color={trailColor(dot.player)}
+                hexSize={cellSize}
+                offsetX={offsetX}
+                offsetY={offsetY}
+                variant="trail"
+                borderColor="#000000"
+              />
+            );
+          })}
 
         {renderMoveGuides()}
         {renderPreview()}
@@ -447,10 +633,11 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         {dots.map((dot) => {
           if (!dot || dot.isAlive) return null;
           const color = getDotColor(dot.id);
-          return (
+          const occupied = getOccupiedCells(dot.currentPos);
+          return occupied.map((cell, idx) => (
             <BaseDotMarker
-              key={dot.id}
-              dot={dot}
+              key={`${dot.id}_${idx}`}
+              dot={{ ...dot, currentPos: cell }}
               color={color}
               isSelected={false}
               cellSize={cellSize}
@@ -461,7 +648,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               shape={getShapeForDot(dot.id)}
               boardFeatures={boardFeatures}
             />
-          );
+          ));
         })}
       </Svg>
 
@@ -471,25 +658,26 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
       >
         {dots.map((dot) => {
           if (!dot || !dot.isAlive || dot.player !== activePlayer) return null;
-          // Calculate click target center coordinates
-          const { x: cx, y: cy } = cellToPixel(dot.currentPos, cellSize, offsetX, offsetY);
-
-          return (
-            <TouchableOpacity
-              key={`tap_${dot.id}`}
-              style={{
-                position: 'absolute',
-                left: cx - 26,
-                top: cy - 26,
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                backgroundColor: 'transparent',
-              }}
-              onPress={() => onSelectDot(dot.id)}
-              activeOpacity={0.65}
-            />
-          );
+          const occupied = getOccupiedCells(dot.currentPos);
+          return occupied.map((cell, idx) => {
+            const { x: cx, y: cy } = cellToPixel(cell, cellSize, offsetX, offsetY);
+            return (
+              <TouchableOpacity
+                key={`tap_${dot.id}_${idx}`}
+                style={{
+                  position: 'absolute',
+                  left: cx - 26,
+                  top: cy - 26,
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: 'transparent',
+                }}
+                onPress={() => onSelectDot(dot.id)}
+                activeOpacity={0.65}
+              />
+            );
+          });
         })}
       </View>
     </View>

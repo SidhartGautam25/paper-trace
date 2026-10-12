@@ -8,13 +8,19 @@ export interface Point {
   c: number; // Column index (0-indexed)
 }
 
+/** Passable kill-zone hex with a shared color family. */
+export interface ZoneTrapCell {
+  point: Point;
+  color: string;
+}
+
 export interface LineSegment {
   id: string; // Unique ID for key mapping in React Native SVG
   start: Point;
   end: Point;
 }
 
-export type CharacterId = 'classic' | 'nova' | 'bulwark' | 'reaper';
+export type CharacterId = 'classic' | 'nova' | 'bulwark' | 'reaper' | 'robot' | 'cat';
 export type CurrencyType = 'gold' | 'silver' | 'money';
 
 export interface PlayerWallet {
@@ -63,4 +69,8 @@ export interface GameState {
   boardFeatures: BoardFeatureInstance[];
   forcedMoveByPlayer: ForcedMoveByPlayer;
   blackBoxes?: Point[];
+  /** Impassable neo traps — opponent dies if beside the same trap / trap group. */
+  proximityTraps?: Point[];
+  /** Passable colored zone hexes — landing on a color kills opponents already on that color. */
+  zoneTraps?: ZoneTrapCell[];
 }

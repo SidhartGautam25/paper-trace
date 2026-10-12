@@ -7,12 +7,13 @@ import {
   ScrollView,
   StatusBar,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Svg, { Circle, Line } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GAME_THEMES } from '../constants/theme';
-import { LEVELS, getBlackBoxesForLevel } from '../constants/levels';
+import { LEVELS, getBoardObstaclesForLevel } from '../constants/levels';
 import { getCharacter } from '../constants/characters';
 
 export default function HomeScreen() {
@@ -89,7 +90,7 @@ export default function HomeScreen() {
                 ? '#F59E0B'
                 : '#EF4444';
 
-            const blackBoxes = getBlackBoxesForLevel(level);
+            const obstacles = getBoardObstaclesForLevel(level);
 
             const dotUnits = [
               level.dots.dot1,
@@ -132,9 +133,14 @@ export default function HomeScreen() {
                   </View>
 
                   <View style={styles.badgeRow}>
-                    {blackBoxes.length > 0 && (
+                    {obstacles.blackBoxes.length > 0 && (
                       <View style={styles.obsBadge}>
-                        <Text style={styles.obsText}>⬛ {blackBoxes.length}</Text>
+                        <Text style={styles.obsText}>⬛ {obstacles.blackBoxes.length}</Text>
+                      </View>
+                    )}
+                    {obstacles.proximityTraps.length > 0 && (
+                      <View style={styles.obsBadge}>
+                        <Text style={styles.obsText}>🔷 {obstacles.proximityTraps.length}</Text>
                       </View>
                     )}
                     <View style={[styles.diffBadge, { backgroundColor: diffColor + '22', borderColor: diffColor }]}>
@@ -168,18 +174,27 @@ export default function HomeScreen() {
                             },
                           ]}
                         >
-                          <Text
-                            style={[
-                              styles.dotPillText,
-                              {
-                                color: isSelected
-                                  ? currentTheme.colors.accent
-                                  : currentTheme.colors.textPrimary,
-                              },
-                            ]}
-                          >
-                            {charDef.name}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            {charDef.avatar && (
+                              <Image
+                                source={charDef.avatar}
+                                style={{ width: 14, height: 14, marginRight: 4 }}
+                                resizeMode="contain"
+                              />
+                            )}
+                            <Text
+                              style={[
+                                styles.dotPillText,
+                                {
+                                  color: isSelected
+                                    ? currentTheme.colors.accent
+                                    : currentTheme.colors.textPrimary,
+                                },
+                              ]}
+                            >
+                              {charDef.name}
+                            </Text>
+                          </View>
                         </View>
                       );
                     })}
