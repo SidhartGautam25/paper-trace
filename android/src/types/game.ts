@@ -69,7 +69,7 @@ export interface GameState {
   boardFeatures: BoardFeatureInstance[];
   forcedMoveByPlayer: ForcedMoveByPlayer;
   blackBoxes?: Point[];
-  /** Impassable lime snares — opponent dies if beside the same trap / trap group. */
+  /** Impassable neo traps — opponent dies if beside the same trap / trap group. */
   proximityTraps?: Point[];
   /** Passable colored zone hexes — landing on a color kills opponents already on that color. */
   zoneTraps?: ZoneTrapCell[];

@@ -216,7 +216,7 @@ export function executeShot(
   if (pathCrossesImpassable(moverCoverage, obstacles)) {
     return failResult(
       gameState,
-      'Shot blocked: cannot travel through impassable obstacles (black or lime snare hexes).'
+      'Shot blocked: cannot travel through impassable obstacles (black or neo trap hexes).'
     );
   }
   if (pathCrossesOwnTrail(movingDotId, pathCells, dots)) {

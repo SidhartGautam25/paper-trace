@@ -36,9 +36,17 @@ export const ZONE_TRAP_COLORS = {
 
 export const DEFAULT_ZONE_TRAP_COLOR = ZONE_TRAP_COLORS.orange;
 
-/** Impassable proximity-trap fill (unused by characters / zone colors). */
-export const PROXIMITY_TRAP_FILL = '#84CC16';
-export const PROXIMITY_TRAP_RIM = '#3F6212';
+/**
+ * Impassable neo proximity-trap border colors (electric cyber indigo / sapphire).
+ * Unused by characters, players, black boxes, or active dot highlights.
+ */
+export const PROXIMITY_TRAP_NEO_RIM = '#312E81';     // Deep cyber indigo outer border
+export const PROXIMITY_TRAP_NEO_GLOW = '#6366F1';    // High-voltage electric neon indigo
+export const PROXIMITY_TRAP_NEO_ACCENT = '#E0E7FF';  // Shiny luminous ice highlight
+export const PROXIMITY_TRAP_NEO_INNER = '#4338CA';   // Inner contrast boundary line
+
+export const PROXIMITY_TRAP_RIM = PROXIMITY_TRAP_NEO_RIM;
+export const PROXIMITY_TRAP_FILL = PROXIMITY_TRAP_NEO_GLOW;
 
 export function getObstaclesFromState(state: GameState): LevelBoardObstacles {
   return {
@@ -191,8 +199,8 @@ export function applyProximityTrapKills(
 
   const logMessages = [
     activePlayer === 1
-      ? 'Lime snare sprung — opponent dots beside the same trap were eliminated!'
-      : 'Bot sprung a lime snare on your dots!',
+      ? 'Neo trap sprung — opponent dots beside the same trap were eliminated!'
+      : 'Bot sprung a neo trap on your dots!',
   ];
 
   return { dots: nextDots, killedIds, logMessages };

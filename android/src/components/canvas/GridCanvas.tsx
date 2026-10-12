@@ -30,8 +30,10 @@ import { lightenHex } from '../../utils/color';
 import {
   EMPTY_BOARD_OBSTACLES,
   LevelBoardObstacles,
-  PROXIMITY_TRAP_FILL,
-  PROXIMITY_TRAP_RIM,
+  PROXIMITY_TRAP_NEO_RIM,
+  PROXIMITY_TRAP_NEO_GLOW,
+  PROXIMITY_TRAP_NEO_ACCENT,
+  PROXIMITY_TRAP_NEO_INNER,
   pathCrossesImpassable,
   pointKey,
 } from '../../engine/boardObstacleEngine';
@@ -385,9 +387,13 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
       if (isProximity) {
         hexCells.push(
           <G key={`proximity_trap_${r}_${c}`}>
-            <Path d={hexPolygonPath(x, y, cellSize * 0.9)} fill={PROXIMITY_TRAP_RIM} />
-            <Path d={hexPolygonPath(x, y, cellSize * 0.76)} fill="#FFFFFF" />
-            <Path d={hexPolygonPath(x, y, cellSize * 0.62)} fill={PROXIMITY_TRAP_FILL} />
+            {/* Outer neo design border: layered electric cyber indigo & sapphire rings */}
+            <Path d={hexPolygonPath(x, y, cellSize * 0.94)} fill={PROXIMITY_TRAP_NEO_RIM} />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.88)} fill={PROXIMITY_TRAP_NEO_GLOW} />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.78)} fill={PROXIMITY_TRAP_NEO_ACCENT} />
+            <Path d={hexPolygonPath(x, y, cellSize * 0.70)} fill={PROXIMITY_TRAP_NEO_INNER} />
+            {/* Empty inner body matching the clean board cell */}
+            <Path d={hexPolygonPath(x, y, cellSize * 0.62)} fill="#E4EBF3" />
           </G>
         );
       }

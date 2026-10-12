@@ -139,7 +139,7 @@ export default function HomeScreen() {
                     )}
                     {obstacles.proximityTraps.length > 0 && (
                       <View style={styles.obsBadge}>
-                        <Text style={styles.obsText}>🟢 {obstacles.proximityTraps.length}</Text>
+                        <Text style={styles.obsText}>🔷 {obstacles.proximityTraps.length}</Text>
                       </View>
                     )}
                     <View style={[styles.diffBadge, { backgroundColor: diffColor + '22', borderColor: diffColor }]}>

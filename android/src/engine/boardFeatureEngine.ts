@@ -44,7 +44,7 @@ export function validateLandingPosition(
     const obstacles = getObstaclesFromState(gameState);
     if (isImpassableCell(cell, obstacles)) {
       if (obstacles.proximityTraps.some((b) => pointsEqual(b, cell))) {
-        return 'That point is an impassable lime snare hex.';
+        return 'That point is an impassable neo trap hex.';
       }
       return 'That point is an impassable black box obstacle.';
     }
