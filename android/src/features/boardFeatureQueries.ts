@@ -45,7 +45,7 @@ export function getSanctuaryAtPoint(
   );
 }
 
-/** True when any alive dot already rests on one of the sanctuary's four corner dots. */
+/** True when any alive dot already rests on the sanctuary hex. */
 export function isSanctuaryOccupied(
   pos: Point,
   dots: Dot[],

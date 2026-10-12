@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GameState, Dot, TokenPool, Direction, CharacterId, CurrencyRegion, PlayerWallet } from '../types/game';
+import { GameState, Dot, TokenPool, Direction, CharacterId, CurrencyRegion, PlayerWallet, Point } from '../types/game';
 import { EMPTY_FORCED_MOVE } from '../types/boardFeatures';
 import { MoveNotification } from '../types/notifications';
 import {
@@ -8,15 +8,16 @@ import {
   createFreshCurrencyRegions,
 } from '../constants/board';
 import { createBoardFeatures } from '../constants/boardFeaturePlacements';
-import { executeShot, hasAnyValidMoves, resolveEndGameWinner } from '../engine/paperEngine';
+import { executeShot, hasAnyValidMoves } from '../engine/paperEngine';
 import { getRequiredDotIdForPlayer } from '../engine/boardFeatureEngine';
-import { refillTokenPoolIfEmpty } from '../utils/tokenPool';
+import { refillTokenPoolIfEmpty, getEffectiveTokenPool } from '../utils/tokenPool';
 import { recordGameOutcome } from '../utils/stats';
 import { getBestMove } from '../engine/aiEngine';
-import { getCharacter } from '../constants/characters';
+import { getCharacter, DEFAULT_CHARACTER_LOADOUT } from '../constants/characters';
 import { EMPTY_WALLET } from '../utils/wallet';
 import { addToWallet } from '../utils/wallet';
 import { appendMatchRecord } from '../utils/matchHistory';
+import { EMPTY_BOARD_OBSTACLES, LevelBoardObstacles } from '../engine/boardObstacleEngine';
 
 function getCharacterLabel(dotId: string, dots: Dot[]): string {
   const dot = dots.find((d) => d.id === dotId);
@@ -30,9 +31,12 @@ function getCharacterLabel(dotId: string, dots: Dot[]): string {
 
 export function usePaperSession(
   initialDifficulty: 'easy' | 'medium' | 'hard' = 'medium',
-  characterLoadout: [CharacterId, CharacterId, CharacterId]
+  characterLoadout: CharacterId[] = DEFAULT_CHARACTER_LOADOUT,
+  botLoadout: CharacterId[] = characterLoadout,
+  boardObstacles: LevelBoardObstacles = EMPTY_BOARD_OBSTACLES,
+  botDelayMs: number = 800
 ) {
-  const [dots, setDots] = useState<Dot[]>(() => createInitialDots(characterLoadout));
+  const [dots, setDots] = useState<Dot[]>(() => createInitialDots(characterLoadout, botLoadout));
   const [player1Tokens, setPlayer1Tokens] = useState<TokenPool>(INITIAL_TOKEN_POOL);
   const [player2Tokens, setPlayer2Tokens] = useState<TokenPool>(INITIAL_TOKEN_POOL);
   const [activePlayer, setActivePlayer] = useState<1 | 2>(1);
@@ -51,6 +55,7 @@ export function usePaperSession(
   const [selectedDotId, setSelectedDotId] = useState<string | null>(null);
   const [selectedToken, setSelectedToken] = useState<number | null>(null);
   const [selectedDirection, setSelectedDirection] = useState<Direction | null>(null);
+  const [lastMovedP1DotId, setLastMovedP1DotId] = useState<string | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
 
   const activeNotification = notificationQueue[0] ?? null;
@@ -63,11 +68,15 @@ export function usePaperSession(
   useEffect(() => {
     const aliveP1Dots = dots.filter((d) => d.player === 1 && d.isAlive);
     const forcedId = getRequiredDotIdForPlayer(1, forcedMoveByPlayer, dots);
+    const lastMovedStillAlive =
+      lastMovedP1DotId != null && aliveP1Dots.some((d) => d.id === lastMovedP1DotId);
 
     if (activePlayer === 1 && !winner) {
       if (forcedId) {
         setSelectedDotId(forcedId);
-      } else if (aliveP1Dots.length === 1) {
+      } else if (lastMovedStillAlive) {
+        setSelectedDotId(lastMovedP1DotId);
+      } else if (aliveP1Dots.length > 0) {
         setSelectedDotId(aliveP1Dots[0].id);
       } else {
         setSelectedDotId(null);
@@ -77,7 +86,7 @@ export function usePaperSession(
     }
     setSelectedToken(null);
     setSelectedDirection(null);
-  }, [activePlayer, dots, forcedMoveByPlayer, winner]);
+  }, [activePlayer, dots, forcedMoveByPlayer, winner, lastMovedP1DotId]);
 
   useEffect(() => {
     if (winner) return;
@@ -89,12 +98,8 @@ export function usePaperSession(
   }, [activePlayer, winner]);
 
   useEffect(() => {
-    if (activePlayer === 1 && !winner) {
-      if (!hasAnyValidMoves(1, dots, player1Tokens, boardFeatures)) {
-        setWinner(resolveEndGameWinner(dots));
-      }
-    }
-  }, [activePlayer, winner, dots, player1Tokens, boardFeatures]);
+    setDifficulty(initialDifficulty);
+  }, [initialDifficulty]);
 
   useEffect(() => {
     if (winner === null) {
@@ -132,6 +137,9 @@ export function usePaperSession(
     matchEarnings,
     boardFeatures,
     forcedMoveByPlayer,
+    blackBoxes: boardObstacles.blackBoxes,
+    proximityTraps: boardObstacles.proximityTraps,
+    zoneTraps: boardObstacles.zoneTraps,
   });
 
   const applyMoveResult = (result: ReturnType<typeof executeShot>, logMsg: string) => {
@@ -198,10 +206,11 @@ export function usePaperSession(
           setActivePlayer(1);
         }
       } else {
-        setWinner(resolveEndGameWinner(dots));
+        setHistoryLogs((prev) => ['Bot has no available moves. Turn passed to Player.', ...prev]);
+        setActivePlayer(1);
       }
       setIsAiThinking(false);
-    }, 800);
+    }, botDelayMs);
 
     return () => clearTimeout(timer);
   }, [
@@ -216,6 +225,7 @@ export function usePaperSession(
     matchEarnings,
     forcedMoveByPlayer,
     boardFeatures,
+    botDelayMs,
   ]);
 
   const selectDot = (dotId: string) => {
@@ -230,8 +240,25 @@ export function usePaperSession(
 
   const selectToken = (value: number) => {
     if (activePlayer !== 1 || winner || isBotBlocked) return;
-    if (player1Tokens[value] > 0) {
+    const effectivePool = getEffectiveTokenPool(player1Tokens);
+    if ((effectivePool[value] ?? 0) > 0) {
       setSelectedToken(value);
+      if (!selectedDotId) {
+        const forcedId = getRequiredDotIdForPlayer(1, forcedMoveByPlayer, dots);
+        if (forcedId) {
+          setSelectedDotId(forcedId);
+        } else if (
+          lastMovedP1DotId &&
+          dots.some((d) => d.id === lastMovedP1DotId && d.player === 1 && d.isAlive)
+        ) {
+          setSelectedDotId(lastMovedP1DotId);
+        } else {
+          const firstAlive = dots.find((d) => d.player === 1 && d.isAlive);
+          if (firstAlive) {
+            setSelectedDotId(firstAlive.id);
+          }
+        }
+      }
     }
   };
 
@@ -266,6 +293,7 @@ export function usePaperSession(
       }
       applyMoveResult(result, logMsg);
 
+      setLastMovedP1DotId(dotId);
       setSelectedDotId(null);
       setSelectedToken(null);
       setSelectedDirection(null);
@@ -274,8 +302,14 @@ export function usePaperSession(
     return { success: false, error: result.error };
   };
 
+  const passTurn = () => {
+    if (activePlayer !== 1 || winner || isBotBlocked) return;
+    setActivePlayer(2);
+    setHistoryLogs((prev) => ['Player passed turn.', ...prev]);
+  };
+
   const resetGame = () => {
-    setDots(createInitialDots(characterLoadout));
+    setDots(createInitialDots(characterLoadout, botLoadout));
     setPlayer1Tokens(INITIAL_TOKEN_POOL);
     setPlayer2Tokens(INITIAL_TOKEN_POOL);
     setActivePlayer(1);
@@ -288,6 +322,7 @@ export function usePaperSession(
     setSelectedDotId(null);
     setSelectedToken(null);
     setSelectedDirection(null);
+    setLastMovedP1DotId(null);
     setIsAiThinking(false);
     matchSavedRef.current = false;
   };
@@ -316,7 +351,10 @@ export function usePaperSession(
     selectToken,
     selectDirection,
     executeMove,
+    passTurn,
     resetGame,
     characterLoadout,
+    botLoadout,
+    boardObstacles,
   };
 }

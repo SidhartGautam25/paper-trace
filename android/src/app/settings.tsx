@@ -9,6 +9,7 @@ import {
   StatusBar,
   Platform,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -62,7 +63,7 @@ export default function SettingsScreen() {
         return { p1: '#9B51E0', p2: '#FE53BB' };
       case 'cyber-neon':
       default:
-        return { p1: '#00F2FF', p2: '#FE53BB' };
+        return { p1: '#00E5FF', p2: '#FF3B6B' };
     }
   };
 
@@ -89,7 +90,7 @@ export default function SettingsScreen() {
     params.lines ? params.lines.split(',') : ['solid', 'dotted', 'glow']
   );
 
-  const [characterLoadout, setCharacterLoadout] = useState<[CharacterId, CharacterId, CharacterId]>(
+  const [characterLoadout, setCharacterLoadout] = useState<CharacterId[]>(() =>
     parseCharacterLoadout(params.characters)
   );
 
@@ -99,17 +100,17 @@ export default function SettingsScreen() {
     }
   }, [params.characters]);
 
-  const setSlotCharacter = (slot: 0 | 1 | 2, charId: CharacterId) => {
+  const setSlotCharacter = (slot: number, charId: CharacterId) => {
     setCharacterLoadout((prev) => {
-      const next: [CharacterId, CharacterId, CharacterId] = [...prev];
+      const next: CharacterId[] = [...prev];
       next[slot] = charId;
       return next;
     });
   };
 
   const COLOR_PALETTE = [
-    { value: '#00F2FF', label: 'Cyan' },
-    { value: '#FE53BB', label: 'Pink' },
+    { value: '#00E5FF', label: 'Electric Blue' },
+    { value: '#FF3B6B', label: 'Neon Red' },
     { value: '#00FF66', label: 'Green' },
     { value: '#FFB900', label: 'Gold' },
     { value: '#FF2A2A', label: 'Red' },
@@ -297,7 +298,15 @@ export default function SettingsScreen() {
                     activeOpacity={0.7}
                   >
                     <View style={styles.cardHeader}>
-                      <View style={{ marginRight: 8 }}>{renderShapePreview(char.shape, char.dotColor)}</View>
+                      {char.avatar ? (
+                        <Image
+                          source={char.avatar}
+                          style={{ width: 28, height: 28, marginRight: 8 }}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View style={{ marginRight: 8 }}>{renderShapePreview(char.shape, char.dotColor)}</View>
+                      )}
                       <View
                         style={[
                           styles.radioCircle,

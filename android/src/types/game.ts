@@ -8,13 +8,19 @@ export interface Point {
   c: number; // Column index (0-indexed)
 }
 
+/** Passable kill-zone hex with a shared color family. */
+export interface ZoneTrapCell {
+  point: Point;
+  color: string;
+}
+
 export interface LineSegment {
   id: string; // Unique ID for key mapping in React Native SVG
   start: Point;
   end: Point;
 }
 
-export type CharacterId = 'classic' | 'nova' | 'bulwark' | 'reaper';
+export type CharacterId = 'classic' | 'nova' | 'bulwark' | 'reaper' | 'robot' | 'cat';
 export type CurrencyType = 'gold' | 'silver' | 'money';
 
 export interface PlayerWallet {
@@ -23,7 +29,7 @@ export interface PlayerWallet {
   money: number;
 }
 
-/** Treasure zone — collected when player's dot touches any of the four corner dots. */
+/** Treasure hex — collected when a player's dot lands on this cell. */
 export interface CurrencyRegion {
   id: string;
   origin: import('./gridRegion').RegionOrigin;
@@ -44,7 +50,8 @@ export interface Dot {
   isAlive: boolean;
 }
 
-export type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+/** Six neighbors of a pointy-top hex. There is no straight north or south step. */
+export type Direction = 'E' | 'NE' | 'NW' | 'W' | 'SW' | 'SE';
 
 export interface TokenPool {
   [key: number]: number; // Token value (1 to 5) mapped to remaining count
@@ -61,4 +68,9 @@ export interface GameState {
   matchEarnings: PlayerWallet;
   boardFeatures: BoardFeatureInstance[];
   forcedMoveByPlayer: ForcedMoveByPlayer;
+  blackBoxes?: Point[];
+  /** Impassable neo traps — opponent dies if beside the same trap / trap group. */
+  proximityTraps?: Point[];
+  /** Passable colored zone hexes — landing on a color kills opponents already on that color. */
+  zoneTraps?: ZoneTrapCell[];
 }

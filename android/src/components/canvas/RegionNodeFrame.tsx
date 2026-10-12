@@ -79,12 +79,12 @@ export const RegionNodeFrame: React.FC<RegionNodeFrameProps> = ({
 }) => {
   const { x: cx, y: cy } = regionLabelPosition(origin, cellSize, offsetX, offsetY);
   const sw = Math.max(1.1, cellSize * 0.038);
-  const glowR = cellSize * 0.38;
+  const glowR = cellSize * 0.62;
 
   return (
     <G opacity={subtle ? 0.78 : 0.96}>
       <Path
-        d={regionPolygonPath(origin, cellSize, offsetX, offsetY, 0.2)}
+        d={regionPolygonPath(origin, cellSize, offsetX, offsetY, 0.04)}
         fill={style.fill}
         stroke={style.primary}
         strokeWidth={sw * 0.55}

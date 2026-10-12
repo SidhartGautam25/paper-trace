@@ -10,7 +10,7 @@ const shieldZone: BoardFeatureDefinition = {
   typeId: 'shield_zone',
   name: 'Sanctuary',
   shortLabel: 'SH',
-  description: 'Dots on sanctuary corners cannot be cut. Only one dot may occupy the four-dot region — lines may still cross.',
+  description: 'A dot standing on the sanctuary hex cannot be cut. Only one dot may occupy that hex — trails may still cross it.',
   visual: {
     stroke: '#38BDF8',
     fill: 'rgba(56, 189, 248, 0.14)',

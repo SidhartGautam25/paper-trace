@@ -15,6 +15,13 @@ export interface CharacterDefinition {
   dotColor: string;
   lineColor: string;
   lineStyle: LineStyle;
+  /** Board trail stripe color (alternates with player blue/red on Nova, Bulwark, Reaper). */
+  trailAccentColor?: string;
+  avatar?: any;
+  /** Clean upright hex body image (stays aligned with hex grid). */
+  avatarBody?: any;
+  /** Inner face layer (eyes and smile that turn toward movement). */
+  avatarFace?: any;
   maxTrailLength: number;
   visibleTrailLength: number;
   power: CharacterPower;
@@ -24,81 +31,135 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
   classic: {
     id: 'classic',
     name: 'Classic',
-    title: 'Standard Issue',
-    description: 'Balanced operator with a full three-segment trail.',
-    powerName: 'No Power',
-    powerDescription: 'Standard three-line trail. Shape: round dot.',
+    title: 'Cyan Gem',
+    description: 'Balanced operator with a four-segment trail.',
+    powerName: 'Full Trail',
+    powerDescription: 'Last 4 moves visible. Whole body can be touched and killed.',
     shape: 'circle',
-    dotColor: '#94A3B8',
-    lineColor: '#CBD5E1',
+    dotColor: '#38BDF8',
+    lineColor: '#7DD3FC',
     lineStyle: 'solid',
-    maxTrailLength: 3,
-    visibleTrailLength: 3,
+    trailAccentColor: '#0284C7',
+    avatar: require('../../assets/images/characters/char1_classic.png'),
+    avatarBody: require('../../assets/images/characters/char1_classic_body.png'),
+    avatarFace: require('../../assets/images/characters/char1_classic_face.png'),
+    maxTrailLength: 4,
+    visibleTrailLength: 4,
     power: 'none',
+  },
+  bulwark: {
+    id: 'bulwark',
+    name: 'Bulwark',
+    title: 'Emerald Guard',
+    description: 'Heavy defense unit with only 2 trail segments.',
+    powerName: 'Compact Trail',
+    powerDescription: 'Only 2 active trail lines. Shape: arrow.',
+    shape: 'arrow',
+    dotColor: '#10B981',
+    lineColor: '#34D399',
+    lineStyle: 'glow',
+    trailAccentColor: '#059669',
+    avatar: require('../../assets/images/characters/char3_bulwark.png'),
+    avatarBody: require('../../assets/images/characters/char3_bulwark_body.png'),
+    avatarFace: require('../../assets/images/characters/char3_bulwark_face.png'),
+    maxTrailLength: 2,
+    visibleTrailLength: 2,
+    power: 'armored_front',
   },
   nova: {
     id: 'nova',
     name: 'Nova',
     title: 'Star Striker',
-    description: 'Light footprint — only two trail segments stay on the board.',
-    powerName: 'Short Trail',
-    powerDescription: 'Only 2 active trail lines. Shape: star.',
+    description: 'Agile striker with 3 active trail segments.',
+    powerName: 'Agile Trail',
+    powerDescription: '3 active trail lines. Shape: star.',
     shape: 'star',
-    dotColor: '#9B51E0',
-    lineColor: '#B47AFF',
+    dotColor: '#F43F5E',
+    lineColor: '#FB7185',
     lineStyle: 'dotted',
-    maxTrailLength: 2,
-    visibleTrailLength: 2,
-    power: 'short_trail',
-  },
-  bulwark: {
-    id: 'bulwark',
-    name: 'Bulwark',
-    title: 'Frontline Guard',
-    description: 'Heavy unit — dot and leading line cannot be cut.',
-    powerName: 'Armored Front',
-    powerDescription:
-      '3 active lines. Only the line attached to your dot is armored — cut the 2nd or 3rd line to kill.',
-    shape: 'arrow',
-    dotColor: '#00F2FF',
-    lineColor: '#00D4FF',
-    lineStyle: 'glow',
+    trailAccentColor: '#E11D48',
+    avatar: require('../../assets/images/characters/char4_nova.png'),
+    avatarBody: require('../../assets/images/characters/char4_nova_body.png'),
+    avatarFace: require('../../assets/images/characters/char4_nova_face.png'),
     maxTrailLength: 3,
     visibleTrailLength: 3,
-    power: 'armored_front',
+    power: 'short_trail',
   },
   reaper: {
     id: 'reaper',
     name: 'Reaper',
-    title: 'Trap Weaver',
-    description: 'Two visible lines hide a lethal ghost trail.',
-    powerName: 'Ghost Trap',
-    powerDescription:
-      '2 visible lines + 1 hidden trap line. Red dots mark lethal points. Shape: hexagon.',
+    title: 'Amethyst Ghost',
+    description: 'Elusive unit leaving only 1 active trail segment.',
+    powerName: 'Ghost Trail',
+    powerDescription: 'Only 1 active trail line. Minimal vulnerability. Shape: hexagon.',
     shape: 'hexagon',
-    dotColor: '#FFB900',
-    lineColor: '#FFD54F',
+    dotColor: '#A855F7',
+    lineColor: '#C084FC',
     lineStyle: 'dashed',
+    trailAccentColor: '#7C3AED',
+    avatar: require('../../assets/images/characters/char6_reaper.png'),
+    avatarBody: require('../../assets/images/characters/char6_reaper_body.png'),
+    avatarFace: require('../../assets/images/characters/char6_reaper_face.png'),
+    maxTrailLength: 1,
+    visibleTrailLength: 1,
+    power: 'ghost_trap',
+  },
+  robot: {
+    id: 'robot',
+    name: 'Mecha',
+    title: 'Cyber Bot',
+    description: 'High-tech robotic unit with cyber visor screen.',
+    powerName: 'Cyber Sensor',
+    powerDescription: 'Advanced mecha navigation and armored shielding.',
+    shape: 'hexagon',
+    dotColor: '#00F2FF',
+    lineColor: '#38BDF8',
+    lineStyle: 'glow',
+    trailAccentColor: '#0284C7',
+    avatar: require('../../assets/images/characters/char2_robot.png'),
+    avatarBody: require('../../assets/images/characters/char2_robot_body.png'),
+    avatarFace: require('../../assets/images/characters/char2_robot_face.png'),
     maxTrailLength: 3,
+    visibleTrailLength: 3,
+    power: 'armored_front',
+  },
+  cat: {
+    id: 'cat',
+    name: 'Neko',
+    title: 'Golden Cat',
+    description: 'Agile feline striker with whiskers.',
+    powerName: 'Feline Reflexes',
+    powerDescription: 'Quick leaps and nimble ghost agility.',
+    shape: 'circle',
+    dotColor: '#FBBF24',
+    lineColor: '#FDE047',
+    lineStyle: 'dashed',
+    trailAccentColor: '#D97706',
+    avatar: require('../../assets/images/characters/char5_cat.png'),
+    avatarBody: require('../../assets/images/characters/char5_cat_body.png'),
+    avatarFace: require('../../assets/images/characters/char5_cat_face.png'),
+    maxTrailLength: 2,
     visibleTrailLength: 2,
     power: 'ghost_trap',
   },
 };
 
-export const DEFAULT_CHARACTER_LOADOUT: [CharacterId, CharacterId, CharacterId] = [
+export const DEFAULT_CHARACTER_LOADOUT: CharacterId[] = [
   'classic',
-  'nova',
   'bulwark',
+  'nova',
+  'reaper',
 ];
 
 export const CHARACTER_LIST = Object.values(CHARACTERS);
 
-const VALID_IDS: CharacterId[] = ['classic', 'nova', 'bulwark', 'reaper'];
+const VALID_IDS: CharacterId[] = ['classic', 'nova', 'bulwark', 'reaper', 'robot', 'cat'];
 
 const LEGACY_ID_MAP: Record<string, CharacterId> = {
   phantom: 'nova',
   blitz: 'bulwark',
   fortress: 'reaper',
+  fatty: 'classic',
 };
 
 function normalizeCharacterId(raw: string): CharacterId | null {
@@ -107,17 +168,15 @@ function normalizeCharacterId(raw: string): CharacterId | null {
 }
 
 /** Normalize any persisted or route loadout to valid character ids. */
-export function sanitizeCharacterLoadout(
-  loadout: unknown
-): [CharacterId, CharacterId, CharacterId] {
-  if (!Array.isArray(loadout) || loadout.length !== 3) {
+export function sanitizeCharacterLoadout(loadout: unknown): CharacterId[] {
+  if (!Array.isArray(loadout) || loadout.length === 0) {
     return DEFAULT_CHARACTER_LOADOUT;
   }
   const parsed = loadout
     .map((id) => normalizeCharacterId(String(id)))
     .filter((p): p is CharacterId => p !== null);
-  if (parsed.length !== 3) return DEFAULT_CHARACTER_LOADOUT;
-  return parsed as [CharacterId, CharacterId, CharacterId];
+  if (parsed.length === 0) return DEFAULT_CHARACTER_LOADOUT;
+  return parsed;
 }
 
 export function getCharacter(id: CharacterId): CharacterDefinition {
@@ -126,13 +185,14 @@ export function getCharacter(id: CharacterId): CharacterDefinition {
 
 export function getCharacterForDot(
   dotId: string,
-  loadout: [CharacterId, CharacterId, CharacterId]
+  loadout: CharacterId[]
 ): CharacterDefinition {
-  const slot = Math.max(0, Math.min(2, parseInt(dotId.split('_')[1] || '1', 10) - 1));
-  return getCharacter(loadout[slot]);
+  const slot = parseInt(dotId.split('_')[1] || '1', 10) - 1;
+  const id = loadout[slot] ?? 'classic';
+  return getCharacter(id);
 }
 
-export function parseCharacterLoadout(raw?: string): [CharacterId, CharacterId, CharacterId] {
+export function parseCharacterLoadout(raw?: string): CharacterId[] {
   if (!raw) return DEFAULT_CHARACTER_LOADOUT;
   return sanitizeCharacterLoadout(raw.split(',').filter(Boolean));
 }

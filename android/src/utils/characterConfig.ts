@@ -5,7 +5,7 @@ import {
 } from '../constants/characters';
 import { getStoredJson, setStoredJson, STORAGE_KEYS } from './storage';
 
-export type CharacterLoadout = [CharacterId, CharacterId, CharacterId];
+export type CharacterLoadout = CharacterId[];
 
 export async function getSavedCharacterLoadout(): Promise<CharacterLoadout> {
   const stored = await getStoredJson<unknown>(STORAGE_KEYS.CHARACTER_LOADOUT, null);
