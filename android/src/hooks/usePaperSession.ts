@@ -252,6 +252,11 @@ export function usePaperSession(
           dots.some((d) => d.id === lastMovedP1DotId && d.player === 1 && d.isAlive)
         ) {
           setSelectedDotId(lastMovedP1DotId);
+        } else {
+          const firstAlive = dots.find((d) => d.player === 1 && d.isAlive);
+          if (firstAlive) {
+            setSelectedDotId(firstAlive.id);
+          }
         }
       }
     }

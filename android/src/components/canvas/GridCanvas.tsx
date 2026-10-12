@@ -104,17 +104,81 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const dragOriginRef = useRef<{ x: number; y: number } | null>(null);
   const gestureDirRef = useRef<Direction | null>(null);
   const gestureDotIdRef = useRef<string | null>(null);
+  const tapGuideDirRef = useRef<Direction | null>(null);
+  const isDraggingRef = useRef<boolean>(false);
 
-  const findPlayerDotAtLocal = (localX: number, localY: number): Dot | null => {
-    const hitRadius = Math.max(28, cellSize * 1.6);
+  const findTeammateDotAtLocal = (
+    localX: number,
+    localY: number,
+    currentDotId: string | null
+  ): Dot | null => {
+    let closestDot: Dot | null = null;
+    let closestDist = Infinity;
+    const hitRadius = Math.max(26, cellSize * 1.25);
+
     for (const dot of dots) {
       if (!dot.isAlive || dot.player !== activePlayer) continue;
+      if (currentDotId && dot.id === currentDotId) continue;
       for (const pos of getOccupiedCells(dot.currentPos)) {
         const { x: cx, y: cy } = cellToPixel(pos, cellSize, offsetX, offsetY);
-        const dx = localX - cx;
-        const dy = localY - cy;
-        if (dx * dx + dy * dy <= hitRadius * hitRadius) return dot;
+        const d = Math.hypot(localX - cx, localY - cy);
+        if (d < closestDist) {
+          closestDist = d;
+          closestDot = dot;
+        }
       }
+    }
+
+    if (closestDot && closestDist <= hitRadius) {
+      return closestDot;
+    }
+    return null;
+  };
+
+  const findMoveDirectionAtPixel = (
+    px: number,
+    py: number,
+    dotId: string
+  ): Direction | null => {
+    if (selectedToken === null) return null;
+    const movingDot = dots.find((d) => d.id === dotId);
+    if (!movingDot || !movingDot.isAlive || movingDot.player !== activePlayer) return null;
+
+    const startPos = movingDot.currentPos;
+    const occupied = getOccupiedCells(startPos);
+
+    let distToDot = Infinity;
+    for (const cell of occupied) {
+      const { x: cx, y: cy } = cellToPixel(cell, cellSize, offsetX, offsetY);
+      const d = Math.hypot(px - cx, py - cy);
+      if (d < distToDot) distToDot = d;
+    }
+
+    let bestDir: Direction | null = null;
+    let bestDist = Infinity;
+    const maxHitRadius = Math.max(24, cellSize * 1.15);
+
+    for (const dir of HEX_DIRECTIONS) {
+      const path = walkHex(startPos, dir, selectedToken);
+      const endPos = path[path.length - 1];
+      const coverage = getMoveCoverageCells(path);
+      if (!endPos || !coverage.every(isWithinBounds)) continue;
+      if (pathCrossesImpassable(coverage, boardObstacles)) continue;
+      if (!canLandAt(endPos, dotId, dots, boardFeatures, boardObstacles)) continue;
+      if (pathCrossesOwnTrail(dotId, path, dots)) continue;
+
+      for (const cell of coverage) {
+        const { x: cx, y: cy } = cellToPixel(cell, cellSize, offsetX, offsetY);
+        const dist = Math.hypot(px - cx, py - cy);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestDir = dir;
+        }
+      }
+    }
+
+    if (bestDir && bestDist <= maxHitRadius && bestDist < distToDot) {
+      return bestDir;
     }
     return null;
   };
@@ -160,38 +224,84 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   const handleStart = (localX: number, localY: number) => {
     if (selectedToken === null) return;
 
-    let dotId = selectedDotId;
-    const hitDot = findPlayerDotAtLocal(localX, localY);
-    if (hitDot) {
-      dotId = hitDot.id;
-      onSelectDot(hitDot.id);
-    }
-    if (!dotId) return;
-
-    gestureDotIdRef.current = dotId;
-    gestureDirRef.current = null;
     dragOriginRef.current = { x: localX, y: localY };
+    gestureDirRef.current = null;
+    tapGuideDirRef.current = null;
+    isDraggingRef.current = false;
+
+    // 1. Check if user clicked a different teammate dot to switch selection
+    const teammateDot = findTeammateDotAtLocal(localX, localY, selectedDotId);
+    if (teammateDot) {
+      gestureDotIdRef.current = teammateDot.id;
+      onSelectDot(teammateDot.id);
+      return;
+    }
+
+    const effectiveDotId =
+      selectedDotId ?? dots.find((d) => d.player === activePlayer && d.isAlive)?.id ?? null;
+    if (!effectiveDotId) return;
+
+    gestureDotIdRef.current = effectiveDotId;
+
+    // 2. Check if user clicked on one of the possible move guide hex boxes
+    const guideDir = findMoveDirectionAtPixel(localX, localY, effectiveDotId);
+    if (guideDir) {
+      tapGuideDirRef.current = guideDir;
+      onSelectDirection(guideDir);
+      onGestureStart?.();
+      return;
+    }
+
     onGestureStart?.();
   };
 
   const handleMove = (localX: number, localY: number) => {
     const origin = dragOriginRef.current;
     if (!gestureDotIdRef.current || selectedToken === null || !origin) return;
-    const dir = getGestureDirection(localX - origin.x, localY - origin.y, gestureDirRef.current);
-    if (dir && dir !== gestureDirRef.current) {
-      gestureDirRef.current = dir;
-      onSelectDirection(dir);
+
+    const dx = localX - origin.x;
+    const dy = localY - origin.y;
+    const dist = Math.hypot(dx, dy);
+
+    // Require movement above drag threshold (12px) to distinguish drag from tap
+    if (dist >= 12) {
+      isDraggingRef.current = true;
+      tapGuideDirRef.current = null;
+
+      const dir = getGestureDirection(dx, dy, gestureDirRef.current);
+      if (dir && dir !== gestureDirRef.current) {
+        gestureDirRef.current = dir;
+        onSelectDirection(dir);
+      }
     }
   };
 
-  const handleEnd = () => {
-    const dir = gestureDirRef.current;
-    const dotId = gestureDotIdRef.current;
+  const handleEnd = (upX?: number, upY?: number) => {
+    const isDrag = isDraggingRef.current;
+    const dotId = gestureDotIdRef.current ?? selectedDotId;
+    const dragDir = gestureDirRef.current;
+    let tapDir = tapGuideDirRef.current;
+
+    // If not a drag and tapDir wasn't locked on touch down, hit test release position
+    if (!isDrag && !tapDir && upX !== undefined && upY !== undefined && dotId) {
+      tapDir = findMoveDirectionAtPixel(upX, upY, dotId);
+    }
+
     dragOriginRef.current = null;
     gestureDirRef.current = null;
     gestureDotIdRef.current = null;
-    if (dir && dotId) {
-      onGestureEnd(dir, dotId);
+    tapGuideDirRef.current = null;
+    isDraggingRef.current = false;
+
+    if (isDrag) {
+      if (dragDir && dotId) {
+        onGestureEnd(dragDir, dotId);
+      }
+    } else {
+      if (tapDir && dotId) {
+        onSelectDirection(tapDir);
+        onGestureEnd(tapDir, dotId);
+      }
     }
   };
 
@@ -212,8 +322,9 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     }
   };
 
-  const onTouchEndLocal = () => {
-    handleEnd();
+  const onTouchEndLocal = (e: any) => {
+    const touch = e.nativeEvent.changedTouches?.[0];
+    handleEnd(touch?.locationX, touch?.locationY);
   };
 
   const onMouseDownLocal = (e: any) => {
@@ -225,8 +336,8 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     handleMove(e.nativeEvent.locationX, e.nativeEvent.locationY);
   };
 
-  const onMouseUpLocal = () => {
-    handleEnd();
+  const onMouseUpLocal = (e: any) => {
+    handleEnd(e.nativeEvent.locationX, e.nativeEvent.locationY);
   };
 
   // Retrieve color from character definition (per dot slot)
@@ -436,7 +547,13 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 
   return (
     <View
-      style={[styles.container, { shadowColor: themeColors.shadowColor }]}
+      style={[
+        styles.container,
+        {
+          shadowColor: themeColors.shadowColor,
+          cursor: (selectedToken !== null ? 'pointer' : 'auto') as any,
+        },
+      ]}
       onStartShouldSetResponder={() => selectedToken !== null}
       onMoveShouldSetResponder={() => selectedToken !== null}
       onTouchStart={onTouchStartLocal}
