@@ -25,7 +25,7 @@ export function getVisibleTrailSegments(dot: Dot): LineSegment[] {
 export function getGhostTrapSegment(dot: Dot): LineSegment | null {
   const char = getCharacter(dot.characterId);
   if (char.power !== 'ghost_trap') return null;
-  if (dot.history.length < char.maxTrailLength) return null;
+  if (dot.history.length <= char.visibleTrailLength) return null;
   return dot.history[0];
 }
 
@@ -33,11 +33,13 @@ export function getTrapPointsForDot(dot: Dot): Point[] {
   const ghost = getGhostTrapSegment(dot);
   if (!ghost || !dot.isAlive) return [];
 
+  const occupied = new Set(getOccupiedCells(dot.currentPos).map((p) => `${p.r},${p.c}`));
   const along = getCellsAlongPath(ghost.start, ghost.end);
   const points: Point[] = [ghost.start, ...along];
   const seen = new Set<string>();
   return points.filter((p) => {
     const key = `${p.r},${p.c}`;
+    if (occupied.has(key)) return false;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

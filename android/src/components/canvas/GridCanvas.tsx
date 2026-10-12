@@ -11,6 +11,8 @@ import {
   cellToPixel,
   getCellsAlongPath,
   getDestination,
+  getMovementRotationDegrees,
+  hexDirectionToRotation,
   hexPolygonPath,
   isWithinBounds,
   pointsEqual,
@@ -441,6 +443,10 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
     const points = orderedTrailPoints(dot);
     const headKeys = new Set(getOccupiedCells(dot.currentPos).map((p) => `${p.r},${p.c}`));
     const isActive = dot.id === effectiveSelectedDotId && dot.player === activePlayer;
+    const rotation =
+      isActive && selectedDirection
+        ? hexDirectionToRotation(selectedDirection)
+        : getMovementRotationDegrees(dot);
 
     return points.map((point) => {
       const isHead = headKeys.has(`${point.r},${point.c}`);
@@ -450,6 +456,9 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
         isHead,
         isActiveHead: isHead && isActive,
         avatar: isHead ? character.avatar : undefined,
+        avatarBody: isHead ? character.avatarBody : undefined,
+        avatarFace: isHead ? character.avatarFace : undefined,
+        rotation: isHead ? rotation : undefined,
       };
     });
   };
@@ -591,6 +600,8 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
 
         {/* Treasure, locks, and other board offerings stay in game state and are not drawn for now. */}
 
+        {renderGhostTraps()}
+
         {[...dots]
           .sort((a, b) => {
             if (a.id === effectiveSelectedDotId) return 1;
@@ -614,8 +625,6 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
               />
             );
           })}
-
-        {renderGhostTraps()}
 
         {renderMoveGuides()}
         {renderPreview()}

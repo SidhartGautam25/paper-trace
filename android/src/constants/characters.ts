@@ -18,6 +18,10 @@ export interface CharacterDefinition {
   /** Board trail stripe color (alternates with player blue/red on Nova, Bulwark, Reaper). */
   trailAccentColor?: string;
   avatar?: any;
+  /** Clean upright hex body image (stays aligned with hex grid). */
+  avatarBody?: any;
+  /** Inner face layer (eyes and smile that turn toward movement). */
+  avatarFace?: any;
   maxTrailLength: number;
   visibleTrailLength: number;
   power: CharacterPower;
@@ -37,6 +41,8 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     lineStyle: 'solid',
     trailAccentColor: '#0284C7',
     avatar: require('../../assets/images/characters/char1_classic.png'),
+    avatarBody: require('../../assets/images/characters/char1_classic_body.png'),
+    avatarFace: require('../../assets/images/characters/char1_classic_face.png'),
     maxTrailLength: 4,
     visibleTrailLength: 4,
     power: 'none',
@@ -54,6 +60,8 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     lineStyle: 'glow',
     trailAccentColor: '#059669',
     avatar: require('../../assets/images/characters/char3_bulwark.png'),
+    avatarBody: require('../../assets/images/characters/char3_bulwark_body.png'),
+    avatarFace: require('../../assets/images/characters/char3_bulwark_face.png'),
     maxTrailLength: 2,
     visibleTrailLength: 2,
     power: 'armored_front',
@@ -71,6 +79,8 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     lineStyle: 'dotted',
     trailAccentColor: '#E11D48',
     avatar: require('../../assets/images/characters/char4_nova.png'),
+    avatarBody: require('../../assets/images/characters/char4_nova_body.png'),
+    avatarFace: require('../../assets/images/characters/char4_nova_face.png'),
     maxTrailLength: 3,
     visibleTrailLength: 3,
     power: 'short_trail',
@@ -88,6 +98,8 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     lineStyle: 'dashed',
     trailAccentColor: '#7C3AED',
     avatar: require('../../assets/images/characters/char6_reaper.png'),
+    avatarBody: require('../../assets/images/characters/char6_reaper_body.png'),
+    avatarFace: require('../../assets/images/characters/char6_reaper_face.png'),
     maxTrailLength: 1,
     visibleTrailLength: 1,
     power: 'ghost_trap',
@@ -105,6 +117,8 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     lineStyle: 'glow',
     trailAccentColor: '#0284C7',
     avatar: require('../../assets/images/characters/char2_robot.png'),
+    avatarBody: require('../../assets/images/characters/char2_robot_body.png'),
+    avatarFace: require('../../assets/images/characters/char2_robot_face.png'),
     maxTrailLength: 3,
     visibleTrailLength: 3,
     power: 'armored_front',
@@ -122,6 +136,8 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     lineStyle: 'dashed',
     trailAccentColor: '#D97706',
     avatar: require('../../assets/images/characters/char5_cat.png'),
+    avatarBody: require('../../assets/images/characters/char5_cat_body.png'),
+    avatarFace: require('../../assets/images/characters/char5_cat_face.png'),
     maxTrailLength: 2,
     visibleTrailLength: 2,
     power: 'ghost_trap',

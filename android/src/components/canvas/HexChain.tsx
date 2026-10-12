@@ -13,6 +13,12 @@ export interface HexChainCell {
   isActiveHead?: boolean;
   /** Character avatar image for the head */
   avatar?: any;
+  /** Clean upright hex body image */
+  avatarBody?: any;
+  /** Inner face layer (eyes and smile) */
+  avatarFace?: any;
+  /** Facing direction rotation degrees for the head */
+  rotation?: number;
 }
 
 interface HexChainProps {
@@ -34,6 +40,31 @@ interface HexChainProps {
 export const KILL_HINT_BORDER = '#FF4D00';
 export const KILL_HINT_FILL = '#FFE94A';
 
+/** Smoothly breathes/twinkles between normal size (1.0) and active size (1.20) */
+export function useTwinkleScale(isActive: boolean): number {
+  const [scale, setScale] = React.useState(1.0);
+
+  React.useEffect(() => {
+    if (!isActive) {
+      setScale(1.0);
+      return;
+    }
+    let startTime = Date.now();
+    let frameId: number;
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const t = (elapsed % 1100) / 1100;
+      const pulse = (1 - Math.cos(2 * Math.PI * t)) / 2;
+      setScale(1.0 + pulse * 0.20);
+      frameId = requestAnimationFrame(animate);
+    };
+    frameId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frameId);
+  }, [isActive]);
+
+  return scale;
+}
+
 export function TrailHex({
   x,
   y,
@@ -43,6 +74,9 @@ export function TrailHex({
   isHead,
   isActiveHead = false,
   avatar,
+  avatarBody,
+  avatarFace,
+  rotation = 0,
 }: {
   x: number;
   y: number;
@@ -52,35 +86,49 @@ export function TrailHex({
   isHead: boolean;
   isActiveHead?: boolean;
   avatar?: any;
+  avatarBody?: any;
+  avatarFace?: any;
+  rotation?: number;
 }) {
+  const twinkleScale = useTwinkleScale(isActiveHead);
   const rimRadius = hexSize * (isHead ? 0.92 : 0.9);
   const fillRadius = hexSize * (isHead ? 0.52 : 0.62);
 
-  // If head has a character avatar image: render the avatar!
-  if (isHead && avatar) {
+  // If head has character artwork: render upright body + directional face!
+  if (isHead && (avatarBody || avatar)) {
+    const baseBody = avatarBody ?? avatar;
+    const baseFace = avatarFace;
     const imgSize = hexSize * 2.18;
+
+    // Directional glance offset: face looks slightly toward the move direction
+    const rad = ((rotation - 90) * Math.PI) / 180;
+    const glanceDist = hexSize * 0.08;
+    const faceDx = Math.cos(rad) * glanceDist;
+    const faceDy = Math.sin(rad) * glanceDist;
+
     return (
-      <G>
-        {isActiveHead && (
-          <G>
-            {/* Radiant golden halo border indicating active/chosen dot */}
-            <Path d={hexPolygonPath(x, y, hexSize * 1.22)} fill="#FFB300" />
-            <Path d={hexPolygonPath(x, y, hexSize * 1.08)} fill="#FFF9C4" />
-          </G>
-        )}
+      <G transform={`translate(${x}, ${y}) scale(${twinkleScale})`}>
+        {/* 1. Hex head body: ALWAYS properly inclined/upright, 0 rotation, all sides aligned with hex box */}
         <SvgImage
-          href={avatar}
-          x={x - imgSize / 2}
-          y={y - imgSize / 2}
+          href={baseBody}
+          x={-imgSize / 2}
+          y={-imgSize / 2}
           width={imgSize}
           height={imgSize}
           preserveAspectRatio="xMidYMid meet"
         />
-        {isActiveHead && (
-          <G>
-            {/* Active focus pip in center of head */}
-            <Circle cx={x} cy={y} r={Math.max(3.5, hexSize * 0.22)} fill="#FFFFFF" fillOpacity={0.9} />
-            <Circle cx={x} cy={y} r={Math.max(2, hexSize * 0.12)} fill="#FFB300" />
+
+        {/* 2. Face (eyes, smile): faces in the direction of movement */}
+        {baseFace && (
+          <G transform={`translate(${faceDx}, ${faceDy}) rotate(${rotation})`}>
+            <SvgImage
+              href={baseFace}
+              x={-imgSize / 2}
+              y={-imgSize / 2}
+              width={imgSize}
+              height={imgSize}
+              preserveAspectRatio="xMidYMid meet"
+            />
           </G>
         )}
       </G>
@@ -88,35 +136,24 @@ export function TrailHex({
   }
 
   return (
-    <G>
-      {isHead && isActiveHead && (
-        <G>
-          {/* Radiant golden halo border indicating active/chosen dot */}
-          <Path d={hexPolygonPath(x, y, hexSize * 1.18)} fill="#FFB300" />
-          <Path d={hexPolygonPath(x, y, hexSize * 1.05)} fill="#FFF9C4" />
-        </G>
-      )}
-      <Path d={hexPolygonPath(x, y, rimRadius)} fill={borderColor} />
+    <G transform={isHead ? `translate(${x}, ${y}) scale(${twinkleScale})` : undefined}>
+      <Path
+        d={hexPolygonPath(isHead ? 0 : x, isHead ? 0 : y, rimRadius)}
+        fill={borderColor}
+      />
       {isHead ? (
         <G>
-          <Path d={hexPolygonPath(x, y, hexSize * 0.84)} fill="#FFFFFF" />
-          <Path
-            d={hexPolygonPath(x, y, hexSize * 0.72)}
-            fill={isActiveHead ? '#FFB300' : borderColor}
-          />
-          <Path d={hexPolygonPath(x, y, hexSize * 0.64)} fill="#FFFFFF" />
+          <Path d={hexPolygonPath(0, 0, hexSize * 0.84)} fill="#FFFFFF" />
+          <Path d={hexPolygonPath(0, 0, hexSize * 0.72)} fill={borderColor} />
+          <Path d={hexPolygonPath(0, 0, hexSize * 0.64)} fill="#FFFFFF" />
         </G>
       ) : (
         <Path d={hexPolygonPath(x, y, hexSize * 0.76)} fill="#FFFFFF" />
       )}
-      <Path d={hexPolygonPath(x, y, fillRadius)} fill={fill} />
-      {isHead && isActiveHead && (
-        <G>
-          {/* Active target pip in center of head */}
-          <Circle cx={x} cy={y} r={Math.max(3.5, hexSize * 0.22)} fill="#FFFFFF" />
-          <Circle cx={x} cy={y} r={Math.max(2, hexSize * 0.12)} fill="#E65100" />
-        </G>
-      )}
+      <Path
+        d={hexPolygonPath(isHead ? 0 : x, isHead ? 0 : y, fillRadius)}
+        fill={fill}
+      />
     </G>
   );
 }
@@ -181,24 +218,33 @@ export const HexChain: React.FC<HexChainProps> = ({
 
   return (
     <G>
-      {cells.map((cell) => {
-        const { x, y } = cellToPixel(cell.point, hexSize, offsetX, offsetY);
-        const fill = cell.fill ?? color;
-        return (
-          <G key={`body_${cell.point.r}_${cell.point.c}`}>
-            <TrailHex
-              x={x}
-              y={y}
-              hexSize={hexSize}
-              fill={fill}
-              borderColor={borderColor}
-              isHead={cell.isHead === true}
-              isActiveHead={cell.isActiveHead === true}
-              avatar={cell.avatar}
-            />
-          </G>
-        );
-      })}
+      {[...cells]
+        .sort((a, b) => {
+          if (a.isHead && !b.isHead) return 1;
+          if (!a.isHead && b.isHead) return -1;
+          return 0;
+        })
+        .map((cell) => {
+          const { x, y } = cellToPixel(cell.point, hexSize, offsetX, offsetY);
+          const fill = cell.fill ?? color;
+          return (
+            <G key={`body_${cell.point.r}_${cell.point.c}`}>
+              <TrailHex
+                x={x}
+                y={y}
+                hexSize={hexSize}
+                fill={fill}
+                borderColor={borderColor}
+                isHead={cell.isHead === true}
+                isActiveHead={cell.isActiveHead === true}
+                avatar={cell.avatar}
+                avatarBody={cell.avatarBody}
+                avatarFace={cell.avatarFace}
+                rotation={cell.rotation}
+              />
+            </G>
+          );
+        })}
     </G>
   );
 };
