@@ -312,7 +312,7 @@ export const LEVELS: LevelConfig[] = [
     title: 'Tactical Clash',
     description: 'Hard AI (Minimax) • 4 Hero Dots',
     difficulty: 'hard',
-    botDelayMs: 150,
+    botDelayMs: 30,
     dots: {
       dot1: 'classic',
       dot2: 'bulwark',
@@ -332,7 +332,7 @@ export const LEVELS: LevelConfig[] = [
     title: 'Iron Pillars',
     description: 'Medium AI • 12 Obstacle Blocks',
     difficulty: 'medium',
-    botDelayMs: 150,
+    botDelayMs: 500,
     dots: {
       dot1: 'classic',
       dot2: 'bulwark',
@@ -365,7 +365,7 @@ export const LEVELS: LevelConfig[] = [
     title: 'Divided Valley',
     description: 'Hard AI • 20 Obstacle Blocks',
     difficulty: 'hard',
-    botDelayMs: 150,
+    botDelayMs: 30,
     dots: {
       dot1: 'classic',
       dot2: 'bulwark',
@@ -412,7 +412,7 @@ export const LEVELS: LevelConfig[] = [
     title: 'Citadel Maze',
     description: 'Hard AI (Minimax) • 28 Obstacle Blocks',
     difficulty: 'hard',
-    botDelayMs: 150,
+    botDelayMs: 30,
     dots: {
       dot1: 'classic',
       dot2: 'bulwark',
@@ -467,7 +467,7 @@ export const LEVELS: LevelConfig[] = [
     title: 'The Crossfire',
     description: 'Hard AI • 16 Bunker Blocks • 4 Central Snares',
     difficulty: 'hard',
-    botDelayMs: 150,
+    botDelayMs: 30,
     dots: {
       dot1: 'classic',
       dot2: 'classic',
@@ -485,7 +485,7 @@ export const LEVELS: LevelConfig[] = [
     title: 'Twin Corridors',
     description: 'Hard AI • 18 Canal Blocks • 6 Transit Snares',
     difficulty: 'hard',
-    botDelayMs: 150,
+    botDelayMs: 30,
     dots: {
       dot1: 'classic',
       dot2: 'nova',
@@ -521,7 +521,7 @@ export const LEVELS: LevelConfig[] = [
     title: 'The Gauntlet',
     description: 'Hard AI • 22 Gauntlet Blocks • 10 Clustered Snares',
     difficulty: 'hard',
-    botDelayMs: 150,
+    botDelayMs: 30,
     dots: {
       dot1: 'classic',
       dot2: 'nova',
@@ -539,7 +539,7 @@ export const LEVELS: LevelConfig[] = [
     title: 'Spiderweb Labyrinth',
     description: 'Hard AI • 26 Labyrinth Blocks • 12 Web Snares',
     difficulty: 'hard',
-    botDelayMs: 150,
+    botDelayMs: 30,
     dots: {
       dot1: 'bulwark',
       dot2: 'nova',
